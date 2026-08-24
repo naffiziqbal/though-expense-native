@@ -1,10 +1,12 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { fonts, fontSize, radius, spacing } from '../../constants/theme';
+import { useTheme } from '../../hooks/useTheme';
 import { getCategoryBadgeColors } from '../../lib/utils';
 
 export function CategoryBadge({ category }: { category: string }) {
-  const { bg, text } = getCategoryBadgeColors(category);
+  const { isDark } = useTheme();
+  const { bg, text } = getCategoryBadgeColors(category, isDark);
   return (
     <View style={[styles.badge, { backgroundColor: bg }]}>
       <Text style={[styles.text, { color: text }]}>{category}</Text>

@@ -2,12 +2,15 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { View } from 'react-native';
 import { radius } from '../constants/theme';
+import { useTheme } from '../hooks/useTheme';
 import { getCategoryIcon } from '../lib/categoryIcons';
 import { getCategoryBadgeColors, getCategoryChartColor } from '../lib/utils';
 
-/** Squircle icon bubble used in transaction rows (web parity: colored bg + category icon). */
+/** Squircle icon bubble used in transaction rows; dark mode uses translucent hue tints. */
 export function CategoryIconBubble({ category, size = 40 }: { category: string; size?: number }) {
-  const { bg } = getCategoryBadgeColors(category);
+  const { isDark } = useTheme();
+  const { bg, text } = getCategoryBadgeColors(category, isDark);
+  const iconColor = isDark ? text : getCategoryChartColor(category);
   return (
     <View
       style={{
@@ -19,7 +22,7 @@ export function CategoryIconBubble({ category, size = 40 }: { category: string; 
         justifyContent: 'center',
       }}
     >
-      <Ionicons name={getCategoryIcon(category)} size={size * 0.5} color={getCategoryChartColor(category)} />
+      <Ionicons name={getCategoryIcon(category)} size={size * 0.5} color={iconColor} />
     </View>
   );
 }

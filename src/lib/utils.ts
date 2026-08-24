@@ -105,8 +105,40 @@ const BADGE_PALETTE: [string, string][] = [
   ['#EDE9FE', '#5B21B6'],
 ];
 
-export function getCategoryBadgeColors(category: string): { bg: string; text: string } {
-  const pair = CATEGORY_BADGES[category] || BADGE_PALETTE[hashString(category) % BADGE_PALETTE.length];
+/** Dark-mode pairs: translucent hue backgrounds + bright text, tuned for #121A2A cards */
+const CATEGORY_BADGES_DARK: Record<string, [string, string]> = {
+  Food: ['rgba(217, 150, 60, 0.18)', '#F0B267'],
+  Transport: ['rgba(93, 124, 220, 0.2)', '#9DB2F5'],
+  Rent: ['rgba(220, 80, 80, 0.18)', '#F0A0A0'],
+  Utilities: ['rgba(202, 164, 32, 0.18)', '#E2C55C'],
+  Shopping: ['rgba(230, 100, 160, 0.18)', '#F096C0'],
+  Entertainment: ['rgba(120, 134, 240, 0.2)', '#AEB8F8'],
+  Healthcare: ['rgba(70, 180, 120, 0.18)', '#7BD8A5'],
+  Education: ['rgba(45, 183, 172, 0.18)', '#6FDCD2'],
+  'Personal Care': ['rgba(240, 140, 80, 0.18)', '#F5AE84'],
+  Fees: ['rgba(148, 163, 184, 0.18)', '#C4CEDB'],
+  Other: ['rgba(148, 163, 184, 0.14)', '#B9C2CE'],
+};
+
+const BADGE_PALETTE_DARK: [string, string][] = [
+  ['rgba(96, 145, 240, 0.2)', '#9DB2F5'],
+  ['rgba(167, 110, 240, 0.2)', '#C9A8F5'],
+  ['rgba(230, 100, 160, 0.2)', '#F096C0'],
+  ['rgba(120, 134, 240, 0.2)', '#AEB8F8'],
+  ['rgba(70, 180, 120, 0.2)', '#7BD8A5'],
+  ['rgba(45, 183, 172, 0.2)', '#6FDCD2'],
+  ['rgba(240, 140, 80, 0.2)', '#F5AE84'],
+  ['rgba(60, 180, 220, 0.2)', '#7FD4EE'],
+  ['rgba(140, 200, 60, 0.2)', '#BCE380'],
+  ['rgba(220, 170, 40, 0.2)', '#E8C866'],
+  ['rgba(240, 100, 120, 0.2)', '#F5A0B0'],
+  ['rgba(150, 120, 245, 0.2)', '#C0B0F8'],
+];
+
+export function getCategoryBadgeColors(category: string, dark = false): { bg: string; text: string } {
+  const map = dark ? CATEGORY_BADGES_DARK : CATEGORY_BADGES;
+  const palette = dark ? BADGE_PALETTE_DARK : BADGE_PALETTE;
+  const pair = map[category] || palette[hashString(category) % palette.length];
   return { bg: pair[0], text: pair[1] };
 }
 
