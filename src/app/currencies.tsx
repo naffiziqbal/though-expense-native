@@ -13,7 +13,7 @@ import { toast } from '../store/toastStore';
 import { useAuthStore } from '../store/authStore';
 
 export default function CurrenciesScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const router = useRouter();
   const { user, setUser } = useAuthStore();
   const [selectedCurrency, setSelectedCurrency] = useState(user?.currency || 'USD');
@@ -43,8 +43,8 @@ export default function CurrenciesScreen() {
   return (
     <Screen>
       <Card style={{ alignItems: 'center', paddingVertical: spacing.s6 }}>
-        <View style={[styles.iconBubble, { backgroundColor: '#E0E7FF' }]}>
-          <Ionicons name="globe" size={26} color="#4F46E5" />
+        <View style={[styles.iconBubble, { backgroundColor: isDark ? 'rgba(120, 134, 240, 0.22)' : '#E0E7FF' }]}>
+          <Ionicons name="globe" size={26} color={isDark ? '#AEB8F8' : '#4F46E5'} />
         </View>
         <Text style={{ color: colors.textPrimary, fontSize: fontSize.lg, fontFamily: fonts.bold, marginTop: spacing.s3 }}>
           Currency

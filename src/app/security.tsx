@@ -14,7 +14,7 @@ import { toast } from '../store/toastStore';
 import { useAuthStore } from '../store/authStore';
 
 export default function SecurityScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const router = useRouter();
   const logout = useAuthStore((s) => s.logout);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -81,8 +81,8 @@ export default function SecurityScreen() {
   return (
     <Screen keyboardAvoiding>
       <Card style={{ alignItems: 'center', paddingVertical: spacing.s6 }}>
-        <View style={[styles.iconBubble, { backgroundColor: '#D1FAE5' }]}>
-          <Ionicons name="shield-checkmark" size={26} color="#059669" />
+        <View style={[styles.iconBubble, { backgroundColor: isDark ? 'rgba(70, 180, 120, 0.2)' : '#D1FAE5' }]}>
+          <Ionicons name="shield-checkmark" size={26} color={isDark ? '#7BD8A5' : '#059669'} />
         </View>
         <Text style={{ color: colors.textPrimary, fontSize: fontSize.lg, fontFamily: fonts.bold, marginTop: spacing.s3 }}>
           Security

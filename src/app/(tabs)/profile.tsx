@@ -22,7 +22,7 @@ interface MenuItem {
 }
 
 export default function ProfileScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const router = useRouter();
   const { user, logout } = useAuthStore();
   const isPremium = user?.isPremium ?? false;
@@ -80,10 +80,10 @@ export default function ProfileScreen() {
           <View
             style={[
               styles.planBadge,
-              { backgroundColor: isPremium ? '#FEF3C7' : colors.border },
+              { backgroundColor: isPremium ? (isDark ? 'rgba(220, 170, 40, 0.25)' : '#FEF3C7') : colors.border },
             ]}
           >
-            <Text style={{ fontSize: 10, fontFamily: fonts.bold, color: isPremium ? '#92400E' : colors.textSecondary }}>
+            <Text style={{ fontSize: 10, fontFamily: fonts.bold, color: isPremium ? (isDark ? '#E8C866' : '#92400E') : colors.textSecondary }}>
               {isPremium ? 'PREMIUM' : 'FREE'}
             </Text>
           </View>
