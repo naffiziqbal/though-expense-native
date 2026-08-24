@@ -1,15 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import {
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
@@ -26,8 +18,9 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
   const insets = useSafeAreaInsets();
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView style={styles.backdropWrap} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
+      {/* Keyboard-aware on both platforms: the sheet levitates above the keyboard. */}
+      <KeyboardAvoidingView style={styles.backdropWrap} behavior="padding">
         <Pressable style={styles.backdrop} onPress={onClose} />
         <View
           style={[

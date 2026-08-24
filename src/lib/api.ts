@@ -18,7 +18,10 @@ import type {
   UpdateExpenseRequest,
 } from './types';
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 const TOKEN_KEY = 'thoughtexpense_token';
+const BASE_URL_KEY = 'thoughtexpense_base_url';
 
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:7100';
 
@@ -60,6 +63,36 @@ class ApiClient {
         return Promise.reject(error);
       }
     );
+  }
+
+  // Base URL management (runtime-overridable so a wrong baked-in URL isn't fatal)
+  getBaseUrl(): string {
+    return this.client.defaults.baseURL || API_BASE_URL;
+  }
+
+  async setBaseUrl(url: string): Promise<void> {
+    const cleaned = url.trim().replace(/\/+$/, '');
+    this.client.defaults.baseURL = cleaned || API_BASE_URL;
+    try {
+      if (cleaned && cleaned !== API_BASE_URL) {
+        await AsyncStorage.setItem(BASE_URL_KEY, cleaned);
+      } else {
+        await AsyncStorage.removeItem(BASE_URL_KEY);
+      }
+    } catch {
+      // in-memory only fallback
+    }
+  }
+
+  /** Load a persisted base-URL override. Call once at app start, before requests. */
+  async loadBaseUrl(): Promise<string> {
+    try {
+      const stored = await AsyncStorage.getItem(BASE_URL_KEY);
+      if (stored) this.client.defaults.baseURL = stored;
+    } catch {
+      // keep default
+    }
+    return this.getBaseUrl();
   }
 
   // Token management
@@ -297,7 +330,7 @@ export function getErrorMessage(error: unknown, fallback = 'Something went wrong
     if (data?.errors?.length) return data.errors.map((e) => e.message).join('\n');
     if (data?.message) return data.message;
     if (error.code === 'ECONNABORTED') return 'Request timed out. Please try again.';
-    if (!error.response) return 'Cannot reach server. Check your connection and API URL.';
+    if (!error.response) return `Cannot reach server at ${api.getBaseUrl()}. Check your connection, or change the server URL in Device Settings.`;
   }
   if (error instanceof Error) return error.message;
   return fallback;

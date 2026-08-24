@@ -98,6 +98,10 @@ export default function LoginScreen() {
           </Pressable>
         </Link>
       </View>
+
+      <Pressable onPress={() => router.push('/device-settings')} style={{ alignSelf: 'center' }}>
+        <Text style={{ color: colors.textMuted, fontSize: fontSize.xs }}>Server settings</Text>
+      </Pressable>
     </Screen>
   );
 }

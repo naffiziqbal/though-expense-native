@@ -1,14 +1,6 @@
 import React from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  View,
-  type StyleProp,
-  type ViewStyle,
-} from 'react-native';
+import { RefreshControl, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { KeyboardAvoidingView, KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
@@ -19,24 +11,19 @@ interface ScreenProps {
   refreshing?: boolean;
   onRefresh?: () => void;
   contentStyle?: StyleProp<ViewStyle>;
-  /** Extra bottom padding (e.g. above tab bar). Safe-area is always applied. */
+  /** Kept for API compatibility — keyboard handling is now always on. */
   keyboardAvoiding?: boolean;
 }
 
-export function Screen({
-  children,
-  scroll = true,
-  refreshing = false,
-  onRefresh,
-  contentStyle,
-  keyboardAvoiding = false,
-}: ScreenProps) {
+export function Screen({ children, scroll = true, refreshing = false, onRefresh, contentStyle }: ScreenProps) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
 
   const inner = scroll ? (
-    <ScrollView
+    // Keyboard-aware: the focused input always stays above the keyboard.
+    <KeyboardAwareScrollView
       style={{ flex: 1 }}
+      bottomOffset={spacing.s6}
       contentContainerStyle={[styles.content, { paddingBottom: spacing.s8 + insets.bottom }, contentStyle]}
       keyboardShouldPersistTaps="handled"
       refreshControl={
@@ -46,26 +33,14 @@ export function Screen({
       }
     >
       {children}
-    </ScrollView>
+    </KeyboardAwareScrollView>
   ) : (
-    <View style={[styles.content, { flex: 1 }, contentStyle]}>{children}</View>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding" keyboardVerticalOffset={insets.top}>
+      <View style={[styles.content, { flex: 1 }, contentStyle]}>{children}</View>
+    </KeyboardAvoidingView>
   );
 
-  return (
-    <View style={{ flex: 1, backgroundColor: colors.bgPrimary }}>
-      {keyboardAvoiding ? (
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={80}
-        >
-          {inner}
-        </KeyboardAvoidingView>
-      ) : (
-        inner
-      )}
-    </View>
-  );
+  return <View style={{ flex: 1, backgroundColor: colors.bgPrimary }}>{inner}</View>;
 }
 
 const styles = StyleSheet.create({
