@@ -4,6 +4,7 @@ import { endOfMonth, format, startOfMonth } from 'date-fns';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { DonutChart } from '../../components/charts/DonutChart';
+import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import { BottomSheet } from '../../components/ui/BottomSheet';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
@@ -30,20 +31,28 @@ export default function InsightsScreen() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [othersSheetOpen, setOthersSheetOpen] = useState(false);
+  const [period, setPeriod] = useState<'month' | 'all'>('month');
   const [categoriesExpanded, setCategoriesExpanded] = useState(false);
 
   const dateRange = useMemo(() => {
+    if (period === 'all') return isPremium ? 'All time' : 'Last 3 months (free plan)';
     const start = startOfMonth(new Date());
     const end = endOfMonth(new Date());
     return `${format(start, 'MMM dd')} - ${format(end, 'MMM dd, yyyy')}`;
-  }, []);
+  }, [period, isPremium]);
 
   const fetchAll = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
+    const iso = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const filters =
+      period === 'month'
+        ? { startDate: iso(startOfMonth(new Date())), endDate: iso(endOfMonth(new Date())) }
+        : undefined;
     try {
       const [insightsRes, summaryRes] = await Promise.all([
         api.getInsights({ limit: 10 }),
-        api.getCategorySummary(),
+        api.getCategorySummary(filters),
       ]);
       if (insightsRes.success) setInsights(insightsRes.data.insights);
       if (summaryRes.success) setSummary(summaryRes.data);
@@ -53,7 +62,7 @@ export default function InsightsScreen() {
       setIsLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [period]);
 
   useFocusEffect(
     useCallback(() => {
@@ -128,6 +137,16 @@ export default function InsightsScreen() {
         </View>
         <Button title="Refresh" variant="ghost" size="sm" onPress={handleGenerateInsights} loading={isGenerating} />
       </View>
+
+      {/* Period switcher */}
+      <SegmentedControl
+        segments={[
+          { value: 'month', label: 'This month' },
+          { value: 'all', label: 'All time' },
+        ]}
+        value={period}
+        onChange={(v) => setPeriod(v as 'month' | 'all')}
+      />
 
       {/* Big picture donut */}
       {summary && summary.transactionCount > 0 ? (

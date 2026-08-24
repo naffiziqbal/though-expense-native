@@ -1,6 +1,7 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { CategoryIconBubble } from '../../components/CategoryIconBubble';
 import { DonutChart } from '../../components/charts/DonutChart';
@@ -46,6 +47,13 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
+  const [seenIds, setSeenIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    AsyncStorage.getItem('seen-notifications')
+      .then((raw) => raw && setSeenIds(JSON.parse(raw)))
+      .catch(() => {});
+  }, []);
 
   const fetchData = useCallback(async (isRefresh = false) => {
     const { startDate, endDate } = getCurrentMonthRange();
@@ -84,14 +92,14 @@ export default function HomeScreen() {
   const notifications: NotificationItem[] = [];
   if (budget && budget.percentage >= 100) {
     notifications.push({
-      id: 'budget-exceeded',
+      id: `budget-exceeded-${budget.year}-${budget.month}`,
       type: 'budget-exceeded',
       content: 'You have exceeded your monthly budget',
       meta: `${formatCurrency(budget.total_spent, currency)} of ${formatCurrency(budget.total_limit, currency)} (${budget.percentage}%)`,
     });
   } else if (budget && budget.percentage >= 90) {
     notifications.push({
-      id: 'budget-warning',
+      id: `budget-warning-${budget.year}-${budget.month}`,
       type: 'budget-warning',
       content: 'You are about to exceed your monthly budget',
       meta: `${formatCurrency(budget.total_spent, currency)} of ${formatCurrency(budget.total_limit, currency)} (${budget.percentage}%)`,
@@ -106,6 +114,15 @@ export default function HomeScreen() {
     });
   });
 
+  const unseenCount = notifications.filter((n) => !seenIds.includes(n.id)).length;
+
+  const openNotifications = () => {
+    setNotificationOpen(true);
+    const merged = Array.from(new Set([...seenIds, ...notifications.map((n) => n.id)])).slice(-100);
+    setSeenIds(merged);
+    AsyncStorage.setItem('seen-notifications', JSON.stringify(merged)).catch(() => {});
+  };
+
   const donutFill = Math.min(100, Math.max(0, budgetPct));
 
   return (
@@ -117,13 +134,13 @@ export default function HomeScreen() {
           <Text style={[styles.name, { color: colors.accent }]}>{user?.name || 'User'}</Text>
         </View>
         <Pressable
-          onPress={() => setNotificationOpen(true)}
+          onPress={openNotifications}
           style={[styles.bellBtn, { backgroundColor: colors.bgCard, borderColor: colors.border }]}
         >
           <Ionicons name="notifications-outline" size={20} color={colors.textSecondary} />
-          {notifications.length > 0 ? (
+          {unseenCount > 0 ? (
             <View style={[styles.badge, { backgroundColor: colors.error }]}>
-              <Text style={styles.badgeText}>{notifications.length > 9 ? '9+' : notifications.length}</Text>
+              <Text style={styles.badgeText}>{unseenCount > 9 ? '9+' : unseenCount}</Text>
             </View>
           ) : null}
         </Pressable>
