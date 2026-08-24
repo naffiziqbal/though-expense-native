@@ -49,7 +49,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <Screen keyboardAvoiding contentStyle={styles.content}>
+    <Screen safeTop contentStyle={styles.content}>
       {/* Brand anchor */}
       <View style={styles.brand}>
         <View style={[styles.logo, { backgroundColor: colors.accent }]}>
@@ -98,10 +98,6 @@ export default function LoginScreen() {
           </Pressable>
         </Link>
       </View>
-
-      <Pressable onPress={() => router.push('/device-settings')} style={{ alignSelf: 'center' }}>
-        <Text style={{ color: colors.textMuted, fontSize: fontSize.xs }}>Server settings</Text>
-      </Pressable>
     </Screen>
   );
 }

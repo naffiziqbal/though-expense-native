@@ -61,7 +61,7 @@ export default function ProfileScreen() {
   ];
 
   return (
-    <Screen>
+    <Screen safeTop>
       {/* Island header */}
       <Card style={{ alignItems: 'center', paddingVertical: spacing.s6 }}>
         <Pressable onPress={() => setLogoutConfirm(true)} style={styles.logoutBtn} hitSlop={8}>

@@ -66,14 +66,16 @@ export function DonutChart({ data, size = 180, strokeWidth = 24, centerLabel, ce
           )}
         </G>
       </Svg>
-      <View style={styles.center}>
+      <View style={[styles.center, { paddingHorizontal: strokeWidth + 6 }]}>
         {centerLabel ? (
           <Text style={[styles.centerLabel, { color: colors.textPrimary }]} numberOfLines={1} adjustsFontSizeToFit>
             {centerLabel}
           </Text>
         ) : null}
         {centerSubLabel ? (
-          <Text style={[styles.centerSub, { color: colors.textSecondary }]}>{centerSubLabel}</Text>
+          <Text style={[styles.centerSub, { color: colors.textSecondary }]} numberOfLines={1}>
+            {centerSubLabel}
+          </Text>
         ) : null}
       </View>
     </View>
@@ -89,7 +91,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 32,
   },
   centerLabel: {
     fontSize: fontSize.xl,

@@ -40,7 +40,7 @@ export default function ForgotPasswordScreen() {
 
   if (emailSent) {
     return (
-      <Screen contentStyle={styles.content}>
+      <Screen safeTop contentStyle={styles.content}>
         <View style={styles.brand}>
           <View style={[styles.logo, { backgroundColor: colors.accentSoft }]}>
             <Ionicons name="mail" size={28} color={colors.accent} />
@@ -65,7 +65,7 @@ export default function ForgotPasswordScreen() {
   }
 
   return (
-    <Screen keyboardAvoiding contentStyle={styles.content}>
+    <Screen safeTop contentStyle={styles.content}>
       <View style={styles.brand}>
         <View style={[styles.logo, { backgroundColor: colors.accent }]}>
           <Ionicons name="trending-up" size={24} color={colors.onAccent} />

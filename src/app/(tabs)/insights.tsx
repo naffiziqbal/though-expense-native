@@ -119,7 +119,7 @@ export default function InsightsScreen() {
       : `${Math.round(summary?.totalSpent ?? 0)}`;
 
   return (
-    <Screen refreshing={refreshing} onRefresh={() => fetchAll(true)}>
+    <Screen safeTop refreshing={refreshing} onRefresh={() => fetchAll(true)}>
       {/* Header */}
       <View style={styles.headerRow}>
         <View>

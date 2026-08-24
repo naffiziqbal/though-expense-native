@@ -109,7 +109,7 @@ export default function HomeScreen() {
   const donutFill = Math.min(100, Math.max(0, budgetPct));
 
   return (
-    <Screen refreshing={refreshing} onRefresh={() => fetchData(true)}>
+    <Screen safeTop refreshing={refreshing} onRefresh={() => fetchData(true)}>
       {/* Zone A: Personal Header */}
       <View style={styles.headerRow}>
         <View>
