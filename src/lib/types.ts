@@ -1,0 +1,186 @@
+// Ported from client/types/index.ts
+
+export interface User {
+  id: string;
+  email: string;
+  name: string | null;
+  currency: string;
+  profilePicture?: string | null;
+  profilePictureUrl?: string | null;
+  isPremium: boolean;
+  createdAt: string;
+}
+
+export interface SignupRequest {
+  email: string;
+  password: string;
+  name?: string;
+  currency?: string;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface AuthResponse {
+  success: boolean;
+  message: string;
+  data: {
+    user: User;
+    token: string;
+  };
+}
+
+export interface Expense {
+  id: string;
+  userId: string;
+  description: string;
+  amount: number;
+  currency: string;
+  category: string;
+  confidence: number;
+  rawInput: string;
+  date: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ParseExpenseRequest {
+  rawInput: string;
+}
+
+export interface ParseExpenseResponse {
+  success: boolean;
+  message: string;
+  data: {
+    expenses: Expense[];
+    needsReview: string[];
+  };
+}
+
+export interface ExpenseFilters {
+  startDate?: string;
+  endDate?: string;
+  category?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface ExpensesResponse {
+  success: boolean;
+  data: {
+    expenses: Expense[];
+    pagination: {
+      total: number;
+      limit: number;
+      offset: number;
+      page?: number;
+      totalPages?: number;
+      hasMore: boolean;
+    };
+  };
+  cached: boolean;
+}
+
+export interface BudgetSummary {
+  id?: string;
+  month: number;
+  year: number;
+  total_limit: number;
+  total_spent: number;
+  remaining: number;
+  percentage: number;
+}
+
+export interface CategoryBudgetProgress {
+  month: number;
+  year: number;
+  category: string;
+  limit: number;
+  spent: number;
+  remaining: number;
+  percentage: number;
+}
+
+export interface UpdateExpenseRequest {
+  description?: string;
+  amount?: number;
+  currency?: string;
+  category?: string;
+  date?: string;
+}
+
+export interface CategorySummary {
+  totalSpent: number;
+  currency: string;
+  byCategory: Record<string, number>;
+  percentages: Record<string, string>;
+  topCategories: string[];
+  transactionCount: number;
+}
+
+export interface CategorySummaryResponse {
+  success: boolean;
+  data: CategorySummary;
+  cached: boolean;
+}
+
+export interface Insight {
+  id: string;
+  userId: string;
+  type: string;
+  content: string;
+  metadata: {
+    summary?: CategorySummary;
+    expenseCount?: number;
+    period?: {
+      start: string;
+      end: string;
+    };
+  };
+  period: string;
+  createdAt: string;
+}
+
+export interface InsightsResponse {
+  success: boolean;
+  data: {
+    insights: Insight[];
+  };
+  cached?: boolean;
+}
+
+export interface GenerateInsightsResponse {
+  success: boolean;
+  message: string;
+  data: {
+    insights: Insight[];
+    summary: CategorySummary;
+  };
+}
+
+export interface ApiError {
+  success: false;
+  message: string;
+  errors?: Array<{
+    field: string;
+    message: string;
+  }>;
+}
+
+export const EXPENSE_CATEGORIES = [
+  'Food',
+  'Transport',
+  'Rent',
+  'Utilities',
+  'Shopping',
+  'Entertainment',
+  'Healthcare',
+  'Education',
+  'Personal Care',
+  'Fees',
+  'Other',
+] as const;
+
+export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];

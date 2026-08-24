@@ -1,56 +1,72 @@
-# Welcome to your Expo app 👋
+# ThoughtExpense — Mobile App (React Native + Expo)
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Native mobile client for ThoughtExpense, the natural-language expense tracker. Feature parity with the web client (`../client`), talking to the Express API in `../server`.
 
-## Get started
+## Features
 
-1. Install dependencies
+- **Quick Log** — type expenses in plain language (`coffee 120, uber 250`), live local preview, AI parse + categorize on save
+- **Dashboard** — monthly total, budget donut, safe-to-spend, top category, recent transactions, budget alerts & AI insight notifications
+- **Expenses** — paginated list, category/date filters (free tier limited to last 3 months), inline edit/delete, CSV/PDF export via native share sheet (Premium)
+- **Insights** — spending donut (top 3 + others), category bars, AI observations, generate on demand
+- **Budget** — monthly limit, AI-parsed category budgets (`Food 500, Rent 2000`), per-category progress with drill-down, history
+- **Profile** — avatar upload, currency, change password, light/dark/system theme, premium
 
-   ```bash
-   npm install
-   ```
+## Stack
 
-2. Start the app
+- Expo SDK 57 / React Native 0.86 / expo-router (file-based navigation in `src/app`)
+- zustand (+ AsyncStorage persistence), axios, expo-secure-store (JWT), react-native-svg (charts)
+- Design tokens ported from `../client/design-token.md` (`src/constants/theme.ts`)
 
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Setup
 
 ```bash
-npm run reset-project
+cd app
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Point the app at your backend in `.env`:
 
-### Other setup steps
+```
+EXPO_PUBLIC_API_URL=http://localhost:7100   # your machine's LAN IP for a physical device,
+                                            # http://10.0.2.2:7100 for Android emulator
+EXPO_PUBLIC_SPACES_URL=https://nexustorage.sgp1.digitaloceanspaces.com
+```
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+Run in development:
 
-## Learn more
+```bash
+npx expo start           # scan QR with Expo Go, or press a / i
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+## Building the APK
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+APK builds are configured through **EAS Build** (`eas.json` — all Android profiles use `buildType: "apk"`).
 
-## Join the community
+```bash
+npm install -g eas-cli
+eas login                          # one-time (expo.dev account)
+eas build -p android --profile preview     # cloud build → downloadable .apk
+```
 
-Join our community of developers creating universal apps.
+The `preview` and `production` profiles bake in `EXPO_PUBLIC_API_URL=https://api.thoughtexpense.nafiziqbal.com` — change that in `eas.json` to match your deployed API before building.
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+### Local APK build (no cloud)
+
+Requires JDK 17 and the Android SDK (neither is currently installed on this machine):
+
+```bash
+brew install --cask zulu@17 android-commandlinetools
+# accept licenses + install platform/build tools, set ANDROID_HOME
+npx expo prebuild -p android
+cd android && ./gradlew assembleRelease
+# output: android/app/build/outputs/apk/release/app-release.apk
+```
+
+Or `eas build -p android --profile preview --local` once JDK + SDK are present.
+
+## Notes / deviations from the web client
+
+- **Receipt OCR** (tesseract.js) is web-only; the native app omits scan-to-text for now (server has no OCR endpoint).
+- **Password reset links** in email open the web frontend (`FRONTEND_URL`); the app covers the request-reset step.
+- Web's `DASHBOARD_REFRESH_EVENT` is replaced by refetch-on-focus (`useFocusEffect`).
+- Export downloads use the native share sheet (expo-file-system + expo-sharing) instead of browser downloads.

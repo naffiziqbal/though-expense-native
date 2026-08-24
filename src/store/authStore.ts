@@ -1,0 +1,104 @@
+// Ported from client/store/authStore.ts (AsyncStorage persistence, SecureStore token)
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
+import { api, setUnauthorizedHandler } from '../lib/api';
+import type { User } from '../lib/types';
+
+interface AuthState {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  error: string | null;
+  _hasHydrated: boolean;
+
+  setUser: (user: User) => void;
+  clearUser: () => void;
+  setLoading: (loading: boolean) => void;
+  setError: (error: string | null) => void;
+  logout: () => Promise<void>;
+  checkAuth: () => Promise<void>;
+  setHasHydrated: (hydrated: boolean) => void;
+}
+
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set, get) => ({
+      user: null,
+      isAuthenticated: false,
+      isLoading: true,
+      error: null,
+      _hasHydrated: false,
+
+      setUser: (user) =>
+        set({
+          user: { ...user, isPremium: user.isPremium ?? false },
+          isAuthenticated: true,
+          error: null,
+        }),
+
+      clearUser: () => set({ user: null, isAuthenticated: false }),
+
+      setLoading: (loading) => set({ isLoading: loading }),
+
+      setError: (error) => set({ error }),
+
+      setHasHydrated: (hydrated) => set({ _hasHydrated: hydrated }),
+
+      logout: async () => {
+        await api.logout();
+        set({ user: null, isAuthenticated: false, error: null });
+      },
+
+      checkAuth: async () => {
+        const token = await api.loadToken();
+
+        if (!token) {
+          set({ user: null, isAuthenticated: false, isLoading: false });
+          return;
+        }
+
+        // If we already have user data from hydration, skip the API call
+        const currentUser = get().user;
+        if (currentUser && get()._hasHydrated) {
+          set({ isAuthenticated: true, isLoading: false });
+          return;
+        }
+
+        try {
+          set({ isLoading: true });
+          const response = await api.getCurrentUser();
+          if (response.success) {
+            set({
+              user: response.data.user,
+              isAuthenticated: true,
+              isLoading: false,
+              error: null,
+            });
+          } else {
+            set({ isLoading: false });
+          }
+        } catch {
+          await api.clearToken();
+          set({ user: null, isAuthenticated: false, isLoading: false, error: null });
+        }
+      },
+    }),
+    {
+      name: 'auth-storage',
+      storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({
+        user: state.user,
+        isAuthenticated: state.isAuthenticated,
+      }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
+    }
+  )
+);
+
+// When any request 401s, drop the session.
+setUnauthorizedHandler(() => {
+  useAuthStore.getState().clearUser();
+});
