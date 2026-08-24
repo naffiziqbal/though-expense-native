@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { api, setUnauthorizedHandler } from '../lib/api';
+import { resetBilling } from '../lib/billing';
 import type { User } from '../lib/types';
 
 interface AuthState {
@@ -47,6 +48,7 @@ export const useAuthStore = create<AuthState>()(
 
       logout: async () => {
         await api.logout();
+        await resetBilling();
         set({ user: null, isAuthenticated: false, error: null });
       },
 

@@ -151,7 +151,8 @@ export default function SecurityScreen() {
       <BottomSheet visible={deleteSheetOpen} onClose={() => setDeleteSheetOpen(false)} title="Delete account?">
         <View style={{ gap: spacing.s3 }}>
           <Text style={{ color: colors.textSecondary }}>
-            This permanently erases your account and everything in it. Enter your password to confirm.
+            This permanently erases your account and everything in it. If you have an active subscription, cancel
+            it in Google Play first — deleting your account does not cancel it. Enter your password to confirm.
           </Text>
           <Input
             placeholder="Your password"

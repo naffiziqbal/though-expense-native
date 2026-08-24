@@ -15,6 +15,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ToastHost } from '../components/ui/ToastHost';
 import { fonts } from '../constants/theme';
 import { api } from '../lib/api';
+import { configureBilling, identifyBilling } from '../lib/billing';
 import { useTheme } from '../hooks/useTheme';
 import { useAuthStore } from '../store/authStore';
 
@@ -23,6 +24,7 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 export default function RootLayout() {
   const { colors, isDark } = useTheme();
   const checkAuth = useAuthStore((s) => s.checkAuth);
+  const userId = useAuthStore((s) => s.user?.id);
   const [fontsLoaded] = useFonts({
     InstrumentSans_400Regular,
     InstrumentSans_500Medium,
@@ -32,7 +34,15 @@ export default function RootLayout() {
 
   useEffect(() => {
     api.loadBaseUrl().finally(() => checkAuth());
+    configureBilling();
   }, [checkAuth]);
+
+  useEffect(() => {
+    if (userId) {
+      configureBilling(userId);
+      identifyBilling(userId);
+    }
+  }, [userId]);
 
   useEffect(() => {
     if (fontsLoaded) SplashScreen.hideAsync().catch(() => {});
