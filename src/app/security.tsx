@@ -1,7 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../components/ui/Button';
+import { BottomSheet } from '../components/ui/BottomSheet';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Screen } from '../components/ui/Screen';
@@ -9,9 +11,12 @@ import { fonts, fontSize, radius, spacing } from '../constants/theme';
 import { useTheme } from '../hooks/useTheme';
 import { api, getErrorMessage } from '../lib/api';
 import { toast } from '../store/toastStore';
+import { useAuthStore } from '../store/authStore';
 
 export default function SecurityScreen() {
   const { colors } = useTheme();
+  const router = useRouter();
+  const logout = useAuthStore((s) => s.logout);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -19,6 +24,9 @@ export default function SecurityScreen() {
   const [showNew, setShowNew] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteSheetOpen, setDeleteSheetOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const validate = () => {
     setError(null);
@@ -49,6 +57,24 @@ export default function SecurityScreen() {
       setError(getErrorMessage(err, 'Failed to update password. Please try again.'));
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!deletePassword) return;
+    setIsDeleting(true);
+    try {
+      const res = await api.deleteAccount(deletePassword);
+      if (res.success) {
+        setDeleteSheetOpen(false);
+        toast.success('Your account has been deleted');
+        await logout();
+        router.replace('/(auth)/login');
+      }
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Failed to delete account'));
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -111,6 +137,42 @@ export default function SecurityScreen() {
           disabled={!currentPassword || !newPassword || !confirmPassword}
         />
       </Card>
+
+      {/* Danger zone */}
+      <Card style={{ gap: spacing.s3, borderColor: colors.error, borderWidth: 1 }}>
+        <Text style={{ color: colors.error, fontFamily: fonts.semibold, fontSize: fontSize.md }}>Danger Zone</Text>
+        <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }}>
+          Permanently delete your account and all data — expenses, budgets, insights and your profile. This cannot be
+          undone.
+        </Text>
+        <Button title="Delete my account" variant="danger" onPress={() => setDeleteSheetOpen(true)} />
+      </Card>
+
+      <BottomSheet visible={deleteSheetOpen} onClose={() => setDeleteSheetOpen(false)} title="Delete account?">
+        <View style={{ gap: spacing.s3 }}>
+          <Text style={{ color: colors.textSecondary }}>
+            This permanently erases your account and everything in it. Enter your password to confirm.
+          </Text>
+          <Input
+            placeholder="Your password"
+            value={deletePassword}
+            onChangeText={setDeletePassword}
+            secureTextEntry
+            autoComplete="current-password"
+          />
+          <View style={{ flexDirection: 'row', gap: spacing.s2 }}>
+            <Button title="Cancel" variant="outline" style={{ flex: 1 }} onPress={() => setDeleteSheetOpen(false)} />
+            <Button
+              title="Delete forever"
+              variant="danger"
+              style={{ flex: 1 }}
+              onPress={handleDeleteAccount}
+              loading={isDeleting}
+              disabled={!deletePassword}
+            />
+          </View>
+        </View>
+      </BottomSheet>
     </Screen>
   );
 }

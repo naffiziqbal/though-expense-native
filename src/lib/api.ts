@@ -188,6 +188,15 @@ class ApiClient {
     return response.data;
   }
 
+  /** Permanently delete the account (password-confirmed). Clears the local session. */
+  async deleteAccount(password: string): Promise<{ success: boolean; message: string }> {
+    const response = await this.client.delete('/api/auth/account', { data: { password } });
+    if (response.data?.success) {
+      await this.clearToken();
+    }
+    return response.data;
+  }
+
   async logout(): Promise<void> {
     await this.clearToken();
   }
