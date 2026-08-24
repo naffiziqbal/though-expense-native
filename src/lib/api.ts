@@ -187,6 +187,25 @@ class ApiClient {
     await this.clearToken();
   }
 
+  /** OCR a receipt image on the server (Premium). Returns raw expense text. */
+  async ocrReceipt(
+    uri: string,
+    mimeType?: string,
+    fileName?: string
+  ): Promise<{ success: boolean; data: { text: string } }> {
+    const formData = new FormData();
+    formData.append('image', {
+      uri,
+      name: fileName || 'receipt.jpg',
+      type: mimeType || 'image/jpeg',
+    } as unknown as Blob);
+    const response = await this.client.post('/api/expenses/ocr', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120000,
+    });
+    return response.data;
+  }
+
   // Expense endpoints
   async parseExpenses(data: ParseExpenseRequest & { create?: boolean }): Promise<ParseExpenseResponse> {
     const response = await this.client.post<ParseExpenseResponse>('/api/expenses/parse', data);

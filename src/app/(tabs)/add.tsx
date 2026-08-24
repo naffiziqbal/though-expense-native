@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CategoryIconBubble } from '../../components/CategoryIconBubble';
@@ -36,10 +37,12 @@ export default function AddExpenseScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
   const currency = user?.currency || 'USD';
+  const isPremium = user?.isPremium ?? false;
 
   const [rawInput, setRawInput] = useState('');
   const [selectedDate, setSelectedDate] = useState(todayISO());
   const [isSaving, setIsSaving] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
   const [saveStage, setSaveStage] = useState<SaveStage>(null);
   const [receiptItems, setReceiptItems] = useState<ReceiptItem[]>([]);
   const [itemsToSave, setItemsToSave] = useState<ReceiptItem[]>([]);
@@ -82,6 +85,40 @@ export default function AddExpenseScreen() {
     setReceiptItems(remaining);
     const newRawInput = remaining.map((i) => i.rawInput ?? `${i.description} ${i.amount}`).join(', ');
     setRawInput(newRawInput);
+  };
+
+  const pickReceipt = async (source: 'camera' | 'gallery') => {
+    try {
+      let result: ImagePicker.ImagePickerResult;
+      if (source === 'camera') {
+        const perm = await ImagePicker.requestCameraPermissionsAsync();
+        if (!perm.granted) {
+          toast.error('Camera permission is required to scan receipts');
+          return;
+        }
+        result = await ImagePicker.launchCameraAsync({ quality: 0.8 });
+      } else {
+        result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
+      }
+      if (result.canceled || !result.assets?.[0]) return;
+      const asset = result.assets[0];
+
+      setIsScanning(true);
+      const res = await api.ocrReceipt(asset.uri, asset.mimeType || 'image/jpeg', asset.fileName || 'receipt.jpg');
+      const text = res?.data?.text?.trim();
+      if (res.success && text) {
+        const newInput = rawInput ? `${rawInput}\n${text}` : text;
+        setRawInput(newInput);
+        updatePreview(newInput);
+        toast.success('Text extracted!');
+      } else {
+        toast.error('No expenses found in the image');
+      }
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Failed to read receipt'));
+    } finally {
+      setIsScanning(false);
+    }
   };
 
   const handleSave = async () => {
@@ -182,28 +219,80 @@ export default function AddExpenseScreen() {
               onChangeText={handleInputChange}
               placeholder="Lunch 500"
               placeholderTextColor={colors.textMuted}
-              editable={!isSaving}
+              editable={!isSaving && !isScanning}
               multiline
               style={[styles.textarea, { color: colors.textPrimary }]}
             />
             <View style={[styles.mediaBar, { borderTopColor: colors.border }]}>
-              {receiptItems.length > 0 ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
-                  <Ionicons name="sparkles" size={14} color={colors.accent} />
-                  <Text style={{ color: colors.accent, fontSize: fontSize.sm, fontFamily: fonts.semibold }}>
-                    {receiptItems.length} item{receiptItems.length !== 1 ? 's' : ''} detected
-                  </Text>
+              {isPremium ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.s2, flex: 1 }}>
+                  <Pressable
+                    onPress={() => pickReceipt('camera')}
+                    disabled={isScanning || isSaving}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 6,
+                      backgroundColor: colors.textPrimary,
+                      borderRadius: radius.full,
+                      paddingHorizontal: spacing.s3,
+                      minHeight: 40,
+                      opacity: isScanning ? 0.6 : 1,
+                    }}
+                  >
+                    {isScanning ? (
+                      <ActivityIndicator size="small" color={colors.bgCard} />
+                    ) : (
+                      <Ionicons name="camera" size={16} color={colors.bgCard} />
+                    )}
+                    <Text style={{ color: colors.bgCard, fontSize: fontSize.sm, fontFamily: fonts.semibold }}>
+                      {isScanning ? 'Reading…' : 'Scan'}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => pickReceipt('gallery')}
+                    disabled={isScanning || isSaving}
+                    hitSlop={6}
+                    style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <Ionicons name="image-outline" size={20} color={colors.textSecondary} />
+                  </Pressable>
                 </View>
               ) : (
-                <Text style={{ color: colors.textMuted, fontSize: fontSize.xs, flex: 1 }}>
-                  e.g. “coffee 120, uber 250 and groceries 900”
-                </Text>
+                <Pressable
+                  onPress={() => router.push('/premium')}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                    backgroundColor: colors.accent,
+                    borderRadius: radius.full,
+                    paddingHorizontal: spacing.s3,
+                    minHeight: 40,
+                    marginRight: spacing.s2,
+                  }}
+                >
+                  <Ionicons name="camera" size={16} color={colors.onAccent} />
+                  <Text style={{ color: colors.onAccent, fontSize: fontSize.sm, fontFamily: fonts.semibold }}>
+                    Upgrade to scan
+                  </Text>
+                </Pressable>
               )}
-              <View style={{ width: 150 }}>
+              <View style={{ width: 140 }}>
                 <DateField value={selectedDate} onChange={setSelectedDate} maximumDate={new Date()} />
               </View>
             </View>
           </Card>
+
+          {/* Detected items indicator */}
+          {receiptItems.length > 0 && itemsToSave.length === 0 ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Ionicons name="sparkles" size={14} color={colors.accent} />
+              <Text style={{ color: colors.accent, fontSize: fontSize.sm, fontFamily: fonts.semibold }}>
+                {receiptItems.length} item{receiptItems.length !== 1 ? 's' : ''} detected
+              </Text>
+            </View>
+          ) : null}
 
           {/* Live receipt list */}
           <ScrollView style={{ flex: 1 }} contentContainerStyle={{ gap: spacing.s2, paddingBottom: spacing.s4 }} keyboardShouldPersistTaps="handled">

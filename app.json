@@ -41,7 +41,13 @@
           }
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "ThoughtExpense uses the camera to scan receipts."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
