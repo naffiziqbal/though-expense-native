@@ -2,7 +2,7 @@ import DateTimePicker, { type DateTimePickerEvent } from '@react-native-communit
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import { fontSize, radius, spacing } from '../../constants/theme';
+import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { BottomSheet } from './BottomSheet';
 import { Button } from './Button';
@@ -90,7 +90,7 @@ export function DateField({ label, value, onChange, placeholder = 'Select date',
 const styles = StyleSheet.create({
   label: {
     fontSize: fontSize.sm,
-    fontWeight: '500',
+    fontFamily: fonts.medium,
   },
   field: {
     borderWidth: 1,

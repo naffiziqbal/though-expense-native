@@ -8,7 +8,7 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Screen } from '../components/ui/Screen';
-import { fontSize, radius, spacing } from '../constants/theme';
+import { fonts, fontSize, radius, spacing } from '../constants/theme';
 import { useTheme } from '../hooks/useTheme';
 import { api, getErrorMessage } from '../lib/api';
 import { getCategoryEmoji } from '../lib/categoryIcons';
@@ -200,7 +200,7 @@ export default function BudgetScreen() {
     <Screen refreshing={refreshing} onRefresh={() => loadBudgets(month, year, true)}>
       {/* Month selector */}
       <Pressable onPress={() => setDatePickerOpen(true)} style={styles.monthRow}>
-        <Text style={{ color: colors.textSecondary, fontSize: fontSize.md, fontWeight: '600' }}>
+        <Text style={{ color: colors.textSecondary, fontSize: fontSize.md, fontFamily: fonts.semibold }}>
           {monthLabel(year, month)}
         </Text>
         <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
@@ -210,9 +210,9 @@ export default function BudgetScreen() {
       <Card>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: colors.textMuted, fontSize: fontSize.xs, fontWeight: '500' }}>Safe to Spend</Text>
+            <Text style={{ color: colors.textMuted, fontSize: fontSize.xs, fontFamily: fonts.medium }}>Safe to Spend</Text>
             <Text
-              style={{ color: colors.textPrimary, fontSize: 40, fontWeight: '800', opacity: loadingBudgets ? 0.5 : 1 }}
+              style={{ color: colors.textPrimary, fontSize: 40, fontFamily: fonts.bold, opacity: loadingBudgets ? 0.5 : 1 }}
               numberOfLines={1}
               adjustsFontSizeToFit
             >
@@ -227,10 +227,10 @@ export default function BudgetScreen() {
           <View style={{ marginTop: spacing.s3, gap: spacing.s2 }}>
             <ProgressBar percentage={budgetPct} color={progressColor} height={12} />
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ color: colors.textSecondary, fontSize: fontSize.xs, fontWeight: '500' }}>
+              <Text style={{ color: colors.textSecondary, fontSize: fontSize.xs, fontFamily: fonts.medium }}>
                 {formatCurrency(budget.total_spent, currency)} spent
               </Text>
-              <Text style={{ color: colors.textSecondary, fontSize: fontSize.xs, fontWeight: '500' }}>
+              <Text style={{ color: colors.textSecondary, fontSize: fontSize.xs, fontFamily: fonts.medium }}>
                 {formatCurrency(budget.total_limit, currency)} limit
               </Text>
             </View>
@@ -261,13 +261,13 @@ export default function BudgetScreen() {
 
         {parsedCategories.length > 0 ? (
           <View style={{ marginTop: spacing.s3, gap: spacing.s2, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, paddingTop: spacing.s3 }}>
-            <Text style={{ color: colors.textSecondary, fontSize: fontSize.xs, fontWeight: '500' }}>Review & save</Text>
+            <Text style={{ color: colors.textSecondary, fontSize: fontSize.xs, fontFamily: fonts.medium }}>Review & save</Text>
             <View style={[styles.totalRow, { backgroundColor: colors.accentSoft }]}>
               <Text style={{ color: colors.textPrimary, fontSize: fontSize.xs, flex: 1 }}>
                 Total from categories: {formatCurrency(parsedCategories.reduce((s, i) => s + Number(i.limit), 0), currency)}
               </Text>
               <Pressable onPress={handleSetAsMonthlyLimit}>
-                <Text style={{ color: colors.accent, fontSize: fontSize.xs, fontWeight: '600' }}>Set as monthly limit</Text>
+                <Text style={{ color: colors.accent, fontSize: fontSize.xs, fontFamily: fonts.semibold }}>Set as monthly limit</Text>
               </Pressable>
             </View>
             {parsedCategories.map((item, idx) => (
@@ -300,7 +300,7 @@ export default function BudgetScreen() {
       {/* Breakdown */}
       {categoryBudgets.length > 0 ? (
         <View style={{ gap: spacing.s2 }}>
-          <Text style={{ color: colors.textPrimary, fontSize: fontSize.md, fontWeight: '600' }}>Breakdown</Text>
+          <Text style={{ color: colors.textPrimary, fontSize: fontSize.md, fontFamily: fonts.semibold }}>Breakdown</Text>
           {categoryBudgets.map((b) => {
             const pct = b.limit > 0 ? Math.min(100, Math.round((b.spent / b.limit) * 100)) : 0;
             const barColor = pct < 75 ? colors.accent : pct < 95 ? colors.warning : colors.error;
@@ -312,8 +312,8 @@ export default function BudgetScreen() {
                     <Text style={{ fontSize: 20 }}>{getCategoryEmoji(b.category)}</Text>
                   </View>
                   <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={{ color: colors.textPrimary, fontWeight: '600', fontSize: fontSize.md }}>{b.category}</Text>
-                    <Text style={{ color: colors.textSecondary, fontSize: fontSize.xs, fontWeight: '500' }}>
+                    <Text style={{ color: colors.textPrimary, fontFamily: fonts.semibold, fontSize: fontSize.md }}>{b.category}</Text>
+                    <Text style={{ color: colors.textSecondary, fontSize: fontSize.xs, fontFamily: fonts.medium }}>
                       {formatCurrency(b.spent, currency)} / {formatCurrency(b.limit, currency)}
                     </Text>
                   </View>
@@ -334,7 +334,7 @@ export default function BudgetScreen() {
                           <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, flex: 1 }} numberOfLines={1}>
                             {e.description}
                           </Text>
-                          <Text style={{ color: colors.textPrimary, fontSize: fontSize.sm, fontWeight: '500' }}>
+                          <Text style={{ color: colors.textPrimary, fontSize: fontSize.sm, fontFamily: fonts.medium }}>
                             {formatCurrency(e.amount, e.currency)}
                           </Text>
                         </View>
@@ -351,7 +351,7 @@ export default function BudgetScreen() {
       {/* Past months */}
       {history.length > 0 ? (
         <Card>
-          <Text style={{ color: colors.textPrimary, fontSize: fontSize.md, fontWeight: '600', marginBottom: spacing.s2 }}>
+          <Text style={{ color: colors.textPrimary, fontSize: fontSize.md, fontFamily: fonts.semibold, marginBottom: spacing.s2 }}>
             Past months
           </Text>
           {history.slice(0, 6).map((b) => {
@@ -365,14 +365,14 @@ export default function BudgetScreen() {
                 }}
                 style={[styles.historyRow, isSelected && { backgroundColor: colors.accentSoft, borderRadius: radius.md }]}
               >
-                <Text style={{ color: colors.textPrimary, fontSize: fontSize.sm, fontWeight: '500' }}>
+                <Text style={{ color: colors.textPrimary, fontSize: fontSize.sm, fontFamily: fonts.medium }}>
                   {monthLabel(b.year, b.month, false)} {isSelected ? '(viewing)' : ''}
                 </Text>
                 <Text
                   style={{
                     color: b.total_spent <= b.total_limit ? colors.accent : colors.error,
                     fontSize: fontSize.xs,
-                    fontWeight: '600',
+                    fontFamily: fonts.semibold,
                   }}
                 >
                   {b.percentage}%
@@ -398,7 +398,7 @@ export default function BudgetScreen() {
                 }}
                 style={[styles.monthOption, isSelected && { backgroundColor: colors.accentSoft }]}
               >
-                <Text style={{ color: isSelected ? colors.accent : colors.textPrimary, fontSize: fontSize.md, fontWeight: '500' }}>
+                <Text style={{ color: isSelected ? colors.accent : colors.textPrimary, fontSize: fontSize.md, fontFamily: fonts.medium }}>
                   {monthLabel(y, m)}
                 </Text>
               </Pressable>

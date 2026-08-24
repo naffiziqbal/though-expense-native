@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { fontSize, radius, spacing } from '../../constants/theme';
+import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { BottomSheet } from './BottomSheet';
 
@@ -57,7 +57,7 @@ export function SelectSheet({ label, value, options, onChange, placeholder = 'Se
                   style={{
                     color: isSelected ? colors.accent : colors.textPrimary,
                     fontSize: fontSize.md,
-                    fontWeight: isSelected ? '600' : '400',
+                    fontFamily: isSelected ? fonts.semibold : fonts.regular,
                   }}
                 >
                   {option.label}
@@ -75,7 +75,7 @@ export function SelectSheet({ label, value, options, onChange, placeholder = 'Se
 const styles = StyleSheet.create({
   label: {
     fontSize: fontSize.sm,
-    fontWeight: '500',
+    fontFamily: fonts.medium,
   },
   field: {
     borderWidth: 1,

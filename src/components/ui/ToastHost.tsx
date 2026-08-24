@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { fontSize, radius, spacing } from '../../constants/theme';
+import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { useToastStore } from '../../store/toastStore';
 
@@ -57,6 +57,6 @@ const styles = StyleSheet.create({
   text: {
     flex: 1,
     fontSize: fontSize.sm,
-    fontWeight: '500',
+    fontFamily: fonts.medium,
   },
 });

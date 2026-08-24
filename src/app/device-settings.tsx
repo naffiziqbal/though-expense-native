@@ -3,7 +3,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Card } from '../components/ui/Card';
 import { Screen } from '../components/ui/Screen';
-import { fontSize, radius, spacing } from '../constants/theme';
+import { fonts, fontSize, radius, spacing } from '../constants/theme';
 import { useTheme } from '../hooks/useTheme';
 import { useThemeStore, type ThemeMode } from '../store/themeStore';
 
@@ -21,7 +21,7 @@ export default function DeviceSettingsScreen() {
     <Screen>
       <Card padded={false}>
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
-          <Text style={{ color: colors.textPrimary, fontWeight: '600', fontSize: fontSize.sm }}>Appearance</Text>
+          <Text style={{ color: colors.textPrimary, fontFamily: fonts.semibold, fontSize: fontSize.sm }}>Appearance</Text>
           <Text style={{ color: colors.textMuted, fontSize: fontSize.xs, marginTop: 2 }}>
             Choose how the app looks on your device
           </Text>
@@ -46,7 +46,7 @@ export default function DeviceSettingsScreen() {
                   style={{
                     color: active ? colors.textPrimary : colors.textSecondary,
                     fontSize: fontSize.sm,
-                    fontWeight: '500',
+                    fontFamily: fonts.medium,
                   }}
                 >
                   {opt.label}

@@ -16,7 +16,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { Input } from '../../components/ui/Input';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import { SelectSheet } from '../../components/ui/SelectSheet';
-import { fontSize, radius, spacing } from '../../constants/theme';
+import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { api, getErrorMessage } from '../../lib/api';
 import type { Expense } from '../../lib/types';
@@ -221,7 +221,7 @@ export default function ExpensesScreen() {
           <Pressable onPress={() => router.push('/premium')}>
             <View style={[styles.freeBanner, { backgroundColor: colors.accentSoft }]}>
               <Text style={{ color: colors.accent, fontSize: fontSize.xs }}>
-                Viewing past 3 months. <Text style={{ fontWeight: '700', textDecorationLine: 'underline' }}>Upgrade to Premium</Text> for full history.
+                Viewing past 3 months. <Text style={{ fontFamily: fonts.bold, textDecorationLine: 'underline' }}>Upgrade to Premium</Text> for full history.
               </Text>
             </View>
           </Pressable>
@@ -241,17 +241,17 @@ export default function ExpensesScreen() {
               style={[styles.iconBtn, { borderColor: colors.border, backgroundColor: colors.bgCard, opacity: isPremium ? 1 : 0.5 }]}
             >
               <Ionicons name={isPremium ? 'download-outline' : 'lock-closed-outline'} size={18} color={colors.textPrimary} />
-              <Text style={{ color: colors.textPrimary, fontSize: fontSize.sm, fontWeight: '500' }}>Export</Text>
+              <Text style={{ color: colors.textPrimary, fontSize: fontSize.sm, fontFamily: fonts.medium }}>Export</Text>
             </Pressable>
             <Pressable
               onPress={() => setFilterSheetOpen(true)}
               style={[styles.iconBtn, { borderColor: colors.border, backgroundColor: colors.bgCard }]}
             >
               <Ionicons name="filter" size={18} color={colors.textPrimary} />
-              <Text style={{ color: colors.textPrimary, fontSize: fontSize.sm, fontWeight: '500' }}>Filter</Text>
+              <Text style={{ color: colors.textPrimary, fontSize: fontSize.sm, fontFamily: fonts.medium }}>Filter</Text>
               {activeFiltersCount > 0 ? (
                 <View style={[styles.filterBadge, { backgroundColor: colors.accentSoft }]}>
-                  <Text style={{ color: colors.accent, fontSize: 10, fontWeight: '700' }}>{activeFiltersCount}</Text>
+                  <Text style={{ color: colors.accent, fontSize: 10, fontFamily: fonts.bold }}>{activeFiltersCount}</Text>
                 </View>
               ) : null}
             </Pressable>
@@ -287,7 +287,7 @@ export default function ExpensesScreen() {
                 >
                   <CategoryIconBubble category={item.category} size={44} />
                   <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={{ color: colors.textPrimary, fontWeight: '700' }} numberOfLines={1}>
+                    <Text style={{ color: colors.textPrimary, fontFamily: fonts.bold }} numberOfLines={1}>
                       {cleanExpenseDescription(item.description)}
                     </Text>
                     <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, marginTop: 2 }}>
@@ -295,7 +295,7 @@ export default function ExpensesScreen() {
                     </Text>
                   </View>
                   <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                    <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>
+                    <Text style={{ color: colors.textPrimary, fontFamily: fonts.bold }}>
                       -{formatCurrency(item.amount, item.currency)}
                     </Text>
                     <CategoryBadge category={item.category} />
@@ -428,7 +428,7 @@ export default function ExpensesScreen() {
           </Text>
           {selectedExpense ? (
             <View style={[styles.deletePreview, { backgroundColor: colors.bgSurface, borderColor: colors.border }]}>
-              <Text style={{ color: colors.textPrimary, fontWeight: '500' }}>{selectedExpense.description}</Text>
+              <Text style={{ color: colors.textPrimary, fontFamily: fonts.medium }}>{selectedExpense.description}</Text>
               <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }}>
                 {formatCurrency(selectedExpense.amount, selectedExpense.currency)} • {selectedExpense.category}
               </Text>
@@ -485,7 +485,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: fontSize.xl,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
   },
   iconBtn: {
     flexDirection: 'row',

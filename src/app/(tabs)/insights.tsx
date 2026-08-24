@@ -8,7 +8,7 @@ import { BottomSheet } from '../../components/ui/BottomSheet';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Screen } from '../../components/ui/Screen';
-import { fontSize, radius, spacing } from '../../constants/theme';
+import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { api, getErrorMessage } from '../../lib/api';
 import type { CategorySummary, Insight } from '../../lib/types';
@@ -177,10 +177,10 @@ export default function InsightsScreen() {
             {visibleBarData.map((item) => (
               <View key={item.category} style={{ gap: spacing.s1 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <Text style={{ color: colors.textPrimary, fontSize: fontSize.sm, fontWeight: '500' }} numberOfLines={1}>
+                  <Text style={{ color: colors.textPrimary, fontSize: fontSize.sm, fontFamily: fonts.medium }} numberOfLines={1}>
                     {item.category}
                   </Text>
-                  <Text style={{ color: colors.textPrimary, fontSize: fontSize.sm, fontWeight: '600' }}>
+                  <Text style={{ color: colors.textPrimary, fontSize: fontSize.sm, fontFamily: fonts.semibold }}>
                     {formatCurrency(item.amount, summary.currency)}
                   </Text>
                 </View>
@@ -199,7 +199,7 @@ export default function InsightsScreen() {
           </View>
           {hasMoreCategories ? (
             <Pressable onPress={() => setCategoriesExpanded(!categoriesExpanded)} style={{ marginTop: spacing.s3 }}>
-              <Text style={{ color: colors.accent, textAlign: 'center', fontWeight: '600', fontSize: fontSize.sm }}>
+              <Text style={{ color: colors.accent, textAlign: 'center', fontFamily: fonts.semibold, fontSize: fontSize.sm }}>
                 {categoriesExpanded ? 'View Less' : 'View All'}
               </Text>
             </Pressable>
@@ -213,7 +213,7 @@ export default function InsightsScreen() {
           <View style={[styles.lockCircle, { backgroundColor: colors.border }]}>
             <Ionicons name="lock-closed" size={22} color={colors.textMuted} />
           </View>
-          <Text style={{ color: colors.textPrimary, fontWeight: '600', marginTop: spacing.s2 }}>
+          <Text style={{ color: colors.textPrimary, fontFamily: fonts.semibold, marginTop: spacing.s2 }}>
             Daily & Weekly Insights
           </Text>
           <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, textAlign: 'center', marginTop: 4 }}>
@@ -233,7 +233,7 @@ export default function InsightsScreen() {
         ) : insights.length === 0 ? (
           <View style={{ alignItems: 'center', paddingVertical: spacing.s5, gap: spacing.s2 }}>
             <Text style={{ fontSize: 40 }}>💡</Text>
-            <Text style={{ color: colors.textPrimary, fontWeight: '600', fontSize: fontSize.lg }}>No insights yet</Text>
+            <Text style={{ color: colors.textPrimary, fontFamily: fonts.semibold, fontSize: fontSize.lg }}>No insights yet</Text>
             <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, textAlign: 'center' }}>
               Generate insights to get AI-powered analysis of your spending
             </Text>
@@ -250,12 +250,12 @@ export default function InsightsScreen() {
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.s2, marginBottom: spacing.s2 }}>
                     <Ionicons name={isAttention ? 'warning' : 'information-circle'} size={18} color={tint} />
                     <View style={[styles.tag, { backgroundColor: `${tint}30` }]}>
-                      <Text style={{ color: tint, fontSize: fontSize.xs, fontWeight: '600' }}>
+                      <Text style={{ color: tint, fontSize: fontSize.xs, fontFamily: fonts.semibold }}>
                         {isAttention ? 'ATTENTION' : 'INSIGHT'}
                       </Text>
                     </View>
                   </View>
-                  <Text style={{ color: colors.textPrimary, fontSize: fontSize.sm, fontWeight: '500' }}>
+                  <Text style={{ color: colors.textPrimary, fontSize: fontSize.sm, fontFamily: fonts.medium }}>
                     {insight.content}
                   </Text>
                 </View>
@@ -271,7 +271,7 @@ export default function InsightsScreen() {
           <View style={{ gap: spacing.s2 }}>
             {othersBreakdown.map((item) => (
               <View key={item.name} style={[styles.othersRow, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
-                <Text style={{ color: colors.textPrimary, fontWeight: '500' }}>{item.name}</Text>
+                <Text style={{ color: colors.textPrimary, fontFamily: fonts.medium }}>{item.name}</Text>
                 <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }}>
                   {formatCurrency(item.value, summary.currency)} ({item.percentage}%)
                 </Text>
@@ -294,11 +294,11 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: fontSize.xl,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
   },
   sectionTitle: {
     fontSize: fontSize.md,
-    fontWeight: '600',
+    fontFamily: fonts.semibold,
   },
   legendRow: {
     flexDirection: 'row',

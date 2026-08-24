@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { fontSize, spacing } from '../constants/theme';
+import { fonts, fontSize, spacing } from '../constants/theme';
 import { useTheme } from '../hooks/useTheme';
 import type { Expense } from '../lib/types';
 import { cleanExpenseDescription, formatCurrency, formatRelativeDate } from '../lib/utils';
@@ -57,7 +57,7 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: fontSize.md,
-    fontWeight: '500',
+    fontFamily: fonts.medium,
   },
   metaRow: {
     flexDirection: 'row',
@@ -73,6 +73,6 @@ const styles = StyleSheet.create({
   },
   amount: {
     fontSize: fontSize.md,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
   },
 });

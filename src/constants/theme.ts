@@ -1,27 +1,42 @@
 /**
- * ThoughtExpense design tokens (ported from client/design-token.md)
- * Semantic tokens with light/dark values.
+ * ThoughtExpense design tokens — "Refined Teal" redesign.
+ * Evolution of client/design-token.md: same teal + cool gray family,
+ * softer cards, calmer hierarchy, Instrument Sans type.
  */
 
 export const palette = {
-  blueGray900: '#0B1220',
-  blueGray800: '#111827',
-  blueGray700: '#1F2937',
-  blueGray600: '#374151',
-  blueGray500: '#4B5563',
-  blueGray400: '#9CA3AF',
-  blueGray300: '#D1D5DB',
-  blueGray200: '#E5E7EB',
-  blueGray100: '#F3F4F6',
-  blueGray50: '#F9FAFB',
-  teal600: '#0EA5A4',
-  teal500: '#14B8A6',
+  ink900: '#101A26',
+  ink700: '#22303C',
+  gray500: '#5B6B78',
+  gray400: '#8A98A5',
+  gray300: '#9AA8B3',
+  line200: '#E7EDEE',
+  line100: '#EEF3F4',
+  mist50: '#F5F8F8',
+  teal600: '#0E9488',
+  teal700: '#0B7A70',
   teal400: '#2DD4BF',
-  green600: '#16A34A',
+  tealSoft: '#E3F4F1',
+  green600: '#2E8B57',
   orange600: '#D97706',
   red600: '#DC2626',
   white: '#FFFFFF',
+  // dark surfaces
+  night900: '#0A0F1C',
+  night800: '#121A2A',
+  night700: '#1A2336',
+  night600: '#37445C',
+  nightText: '#F2F5F7',
+  nightMuted: '#8A94A6',
 };
+
+/** Instrument Sans static weights (loaded in app/_layout.tsx). */
+export const fonts = {
+  regular: 'InstrumentSans_400Regular',
+  medium: 'InstrumentSans_500Medium',
+  semibold: 'InstrumentSans_600SemiBold',
+  bold: 'InstrumentSans_700Bold',
+} as const;
 
 export interface ThemeColors {
   bgPrimary: string;
@@ -31,53 +46,59 @@ export interface ThemeColors {
   textSecondary: string;
   textMuted: string;
   border: string;
+  divider: string;
   accent: string;
   accentHover: string;
   accentSoft: string;
   onAccent: string;
   success: string;
   warning: string;
+  warningSoft: string;
   error: string;
   errorSoft: string;
   inputBg: string;
 }
 
 export const lightColors: ThemeColors = {
-  bgPrimary: palette.blueGray50,
-  bgSurface: palette.blueGray50,
+  bgPrimary: palette.mist50,
+  bgSurface: palette.mist50,
   bgCard: palette.white,
-  textPrimary: palette.blueGray900,
-  textSecondary: palette.blueGray500,
-  textMuted: palette.blueGray400,
-  border: palette.blueGray200,
+  textPrimary: palette.ink900,
+  textSecondary: palette.gray500,
+  textMuted: palette.gray400,
+  border: palette.line200,
+  divider: palette.line100,
   accent: palette.teal600,
-  accentHover: palette.teal500,
-  accentSoft: '#CCFBF1',
+  accentHover: palette.teal700,
+  accentSoft: palette.tealSoft,
   onAccent: palette.white,
   success: palette.green600,
   warning: palette.orange600,
+  warningSoft: '#FDF0DE',
   error: palette.red600,
   errorSoft: '#FEE2E2',
   inputBg: palette.white,
 };
 
 export const darkColors: ThemeColors = {
-  bgPrimary: palette.blueGray900,
-  bgSurface: palette.blueGray800,
-  bgCard: palette.blueGray700,
-  textPrimary: palette.blueGray50,
-  textSecondary: palette.blueGray300,
-  textMuted: palette.blueGray400,
-  border: palette.blueGray600,
+  bgPrimary: palette.night900,
+  bgSurface: palette.night800,
+  bgCard: palette.night800,
+  textPrimary: palette.nightText,
+  textSecondary: '#B9C2CE',
+  textMuted: palette.nightMuted,
+  border: palette.night700,
+  divider: palette.night700,
   accent: palette.teal400,
-  accentHover: palette.teal500,
-  accentSoft: 'rgba(45, 212, 191, 0.15)',
-  onAccent: palette.blueGray900,
+  accentHover: '#5EEAD4',
+  accentSoft: 'rgba(45, 212, 191, 0.14)',
+  onAccent: palette.night900,
   success: '#4ADE80',
   warning: '#FBBF24',
+  warningSoft: 'rgba(217, 119, 6, 0.18)',
   error: '#F87171',
   errorSoft: 'rgba(220, 38, 38, 0.2)',
-  inputBg: palette.blueGray800,
+  inputBg: palette.night800,
 };
 
 export const spacing = {
@@ -93,17 +114,18 @@ export const spacing = {
 } as const;
 
 export const radius = {
-  sm: 6,
-  md: 10,
-  lg: 16,
+  sm: 8,
+  md: 13,
+  lg: 20,
+  xl: 24,
   full: 9999,
 } as const;
 
 export const fontSize = {
   xs: 12,
-  sm: 14,
-  md: 16,
+  sm: 13,
+  md: 15,
   lg: 18,
   xl: 24,
-  xxl: 32,
+  xxl: 34,
 } as const;

@@ -8,7 +8,7 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Screen } from '../components/ui/Screen';
-import { fontSize, spacing } from '../constants/theme';
+import { fonts, fontSize, spacing } from '../constants/theme';
 import { useTheme } from '../hooks/useTheme';
 import { api, getErrorMessage } from '../lib/api';
 import type { User } from '../lib/types';
@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
   },
   avatarInitial: {
     fontSize: 40,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
     color: '#fff',
   },
   cameraOverlay: {

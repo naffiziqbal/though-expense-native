@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Screen } from '../components/ui/Screen';
-import { fontSize, radius, spacing } from '../constants/theme';
+import { fonts, fontSize, radius, spacing } from '../constants/theme';
 import { useTheme } from '../hooks/useTheme';
 import { useAuthStore } from '../store/authStore';
 
@@ -27,7 +27,7 @@ export default function PremiumScreen() {
         <View style={[styles.crown, { backgroundColor: colors.accent }]}>
           <Ionicons name="star" size={30} color={colors.onAccent} />
         </View>
-        <Text style={{ color: colors.textPrimary, fontSize: fontSize.xl, fontWeight: '700' }}>
+        <Text style={{ color: colors.textPrimary, fontSize: fontSize.xl, fontFamily: fonts.bold }}>
           ThoughtExpense Premium
         </Text>
         <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, textAlign: 'center' }}>
@@ -38,7 +38,7 @@ export default function PremiumScreen() {
       </View>
 
       <Card>
-        <Text style={{ color: colors.textPrimary, fontSize: fontSize.lg, fontWeight: '600', marginBottom: spacing.s3 }}>
+        <Text style={{ color: colors.textPrimary, fontSize: fontSize.lg, fontFamily: fonts.semibold, marginBottom: spacing.s3 }}>
           {isPremium ? 'What you have' : 'What you get'}
         </Text>
         <View style={{ gap: spacing.s3 }}>
@@ -46,7 +46,7 @@ export default function PremiumScreen() {
             <View key={b.title} style={{ flexDirection: 'row', gap: spacing.s3 }}>
               <Ionicons name="checkmark-circle" size={22} color={colors.accent} />
               <View style={{ flex: 1 }}>
-                <Text style={{ color: colors.textPrimary, fontWeight: '500' }}>{b.title}</Text>
+                <Text style={{ color: colors.textPrimary, fontFamily: fonts.medium }}>{b.title}</Text>
                 <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }}>{b.desc}</Text>
               </View>
             </View>
@@ -56,7 +56,7 @@ export default function PremiumScreen() {
 
       {!isPremium ? (
         <Card style={{ alignItems: 'center', gap: spacing.s2 }}>
-          <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>Ready to upgrade?</Text>
+          <Text style={{ color: colors.textPrimary, fontFamily: fonts.semibold }}>Ready to upgrade?</Text>
           <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, textAlign: 'center' }}>
             In-app purchases are coming soon. Stay tuned for updates!
           </Text>

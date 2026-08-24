@@ -7,7 +7,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { fontSize, radius, spacing } from '../../constants/theme';
+import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 
 type Variant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
@@ -97,6 +97,6 @@ const styles = StyleSheet.create({
     gap: spacing.s2,
   },
   text: {
-    fontWeight: '600',
+    fontFamily: fonts.semibold,
   },
 });

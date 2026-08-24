@@ -10,7 +10,7 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Screen } from '../../components/ui/Screen';
-import { fontSize, radius, spacing } from '../../constants/theme';
+import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { api } from '../../lib/api';
 import type { BudgetSummary, CategorySummary, Expense, Insight } from '../../lib/types';
@@ -137,7 +137,7 @@ export default function HomeScreen() {
             borderColor: budget.percentage >= 100 ? colors.error : colors.warning,
           }}
         >
-          <Text style={{ color: colors.textPrimary, fontWeight: '600', fontSize: fontSize.sm }}>
+          <Text style={{ color: colors.textPrimary, fontFamily: fonts.semibold, fontSize: fontSize.sm }}>
             {budget.percentage >= 100
               ? 'You have exceeded your monthly budget'
               : 'You are about to exceed your monthly budget'}
@@ -160,11 +160,30 @@ export default function HomeScreen() {
             <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, marginTop: spacing.s2 }}>
               {summary?.transactionCount ?? 0} transactions
             </Text>
+            {budget ? (
+              <Text
+                style={{
+                  color: colors.accent,
+                  fontFamily: fonts.semibold,
+                  fontSize: fontSize.xs,
+                  backgroundColor: colors.accentSoft,
+                  borderRadius: radius.full,
+                  paddingHorizontal: spacing.s2,
+                  paddingVertical: 3,
+                  alignSelf: 'flex-start',
+                  marginTop: spacing.s2,
+                  overflow: 'hidden',
+                }}
+              >
+                {formatCurrency(Math.max(0, budget.remaining), currency)} safe to spend
+              </Text>
+            ) : null}
           </View>
           <DonutChart
             size={96}
             strokeWidth={12}
             centerLabel={`${Math.round(donutFill)}%`}
+            centerSubLabel="of budget"
             data={[
               { value: donutFill, color: colors.accent },
               { value: 100 - donutFill, color: colors.border },
@@ -183,7 +202,7 @@ export default function HomeScreen() {
             </Text>
             <View style={{ gap: spacing.s1 }}>
               <ProgressBar percentage={budgetPct} />
-              <Text style={{ color: colors.accent, fontSize: 10, fontWeight: '600' }}>View budget</Text>
+              <Text style={{ color: colors.accent, fontSize: 10, fontFamily: fonts.semibold }}>View budget</Text>
             </View>
           </Card>
         </Pressable>
@@ -192,10 +211,10 @@ export default function HomeScreen() {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.s2 }}>
             {topCategory ? <CategoryIconBubble category={topCategory} size={40} /> : null}
             <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={{ color: colors.textPrimary, fontWeight: '700' }} numberOfLines={1}>
+              <Text style={{ color: colors.textPrimary, fontFamily: fonts.bold }} numberOfLines={1}>
                 {topCategory || '—'}
               </Text>
-              <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, fontWeight: '600' }} numberOfLines={1}>
+              <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, fontFamily: fonts.semibold }} numberOfLines={1}>
                 {loading ? '…' : formatCurrency(topCategoryAmount, currency)}
               </Text>
             </View>
@@ -209,7 +228,7 @@ export default function HomeScreen() {
           <View style={styles.sectionRow}>
             <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Recent Transactions</Text>
             <Pressable onPress={() => router.push('/(tabs)/expenses')}>
-              <Text style={{ color: colors.accent, fontWeight: '600', fontSize: fontSize.sm }}>View All</Text>
+              <Text style={{ color: colors.accent, fontFamily: fonts.semibold, fontSize: fontSize.sm }}>View All</Text>
             </Pressable>
           </View>
           <Card padded={false}>
@@ -224,12 +243,12 @@ export default function HomeScreen() {
               >
                 <CategoryIconBubble category={expense.category} size={44} />
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={{ color: colors.textPrimary, fontWeight: '700' }} numberOfLines={1}>
+                  <Text style={{ color: colors.textPrimary, fontFamily: fonts.bold }} numberOfLines={1}>
                     {expense.description}
                   </Text>
                   <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }}>{formatDate(expense.date)}</Text>
                 </View>
-                <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>
+                <Text style={{ color: colors.textPrimary, fontFamily: fonts.bold }}>
                   -{formatCurrency(expense.amount, expense.currency)}
                 </Text>
               </Pressable>
@@ -292,7 +311,7 @@ export default function HomeScreen() {
                   },
                 ]}
               >
-                <Text style={{ color: colors.textPrimary, fontSize: fontSize.sm, fontWeight: '500' }}>{n.content}</Text>
+                <Text style={{ color: colors.textPrimary, fontSize: fontSize.sm, fontFamily: fonts.medium }}>{n.content}</Text>
                 {n.meta ? (
                   <Text style={{ color: colors.textMuted, fontSize: fontSize.xs, marginTop: 4 }}>{n.meta}</Text>
                 ) : null}
@@ -306,7 +325,7 @@ export default function HomeScreen() {
                 router.push('/budget');
               }}
             >
-              <Text style={{ color: colors.accent, fontWeight: '600', fontSize: fontSize.sm }}>View budget</Text>
+              <Text style={{ color: colors.accent, fontFamily: fonts.semibold, fontSize: fontSize.sm }}>View budget</Text>
             </Pressable>
             <Pressable
               onPress={() => {
@@ -314,7 +333,7 @@ export default function HomeScreen() {
                 router.push('/(tabs)/insights');
               }}
             >
-              <Text style={{ color: colors.accent, fontWeight: '600', fontSize: fontSize.sm }}>View all insights</Text>
+              <Text style={{ color: colors.accent, fontFamily: fonts.semibold, fontSize: fontSize.sm }}>View all insights</Text>
             </Pressable>
           </View>
         </View>
@@ -331,12 +350,12 @@ const styles = StyleSheet.create({
   },
   welcome: {
     fontSize: fontSize.xs,
-    fontWeight: '600',
+    fontFamily: fonts.semibold,
     letterSpacing: 1,
   },
   name: {
     fontSize: fontSize.xl,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
   },
   bellBtn: {
     width: 40,
@@ -359,7 +378,7 @@ const styles = StyleSheet.create({
   badgeText: {
     color: '#fff',
     fontSize: 9,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
   },
   heroRow: {
     flexDirection: 'row',
@@ -369,12 +388,12 @@ const styles = StyleSheet.create({
   },
   heroLabel: {
     fontSize: 10,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
     letterSpacing: 1,
   },
   heroAmount: {
     fontSize: fontSize.xxl,
-    fontWeight: '800',
+    fontFamily: fonts.bold,
     marginTop: 4,
   },
   grid: {
@@ -387,7 +406,7 @@ const styles = StyleSheet.create({
   },
   gridAmount: {
     fontSize: fontSize.lg,
-    fontWeight: '800',
+    fontFamily: fonts.bold,
   },
   sectionRow: {
     flexDirection: 'row',
@@ -396,7 +415,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: fontSize.lg,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
   },
   txRow: {
     flexDirection: 'row',

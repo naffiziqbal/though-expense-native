@@ -5,7 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Screen } from '../components/ui/Screen';
-import { fontSize, radius, spacing } from '../constants/theme';
+import { fonts, fontSize, radius, spacing } from '../constants/theme';
 import { useTheme } from '../hooks/useTheme';
 import { api, getErrorMessage } from '../lib/api';
 import { toast } from '../store/toastStore';
@@ -58,7 +58,7 @@ export default function SecurityScreen() {
         <View style={[styles.iconBubble, { backgroundColor: '#D1FAE5' }]}>
           <Ionicons name="shield-checkmark" size={26} color="#059669" />
         </View>
-        <Text style={{ color: colors.textPrimary, fontSize: fontSize.lg, fontWeight: '700', marginTop: spacing.s3 }}>
+        <Text style={{ color: colors.textPrimary, fontSize: fontSize.lg, fontFamily: fonts.bold, marginTop: spacing.s3 }}>
           Security
         </Text>
         <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, marginTop: 4, textAlign: 'center' }}>
@@ -67,7 +67,7 @@ export default function SecurityScreen() {
       </Card>
 
       <Card style={{ gap: spacing.s3 }}>
-        <Text style={{ color: colors.textPrimary, fontWeight: '600', fontSize: fontSize.md }}>Change Password</Text>
+        <Text style={{ color: colors.textPrimary, fontFamily: fonts.semibold, fontSize: fontSize.md }}>Change Password</Text>
         <Input
           label="Current password"
           placeholder="Enter current password"

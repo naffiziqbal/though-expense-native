@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, G } from 'react-native-svg';
-import { fontSize } from '../../constants/theme';
+import { fonts, fontSize } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 
 export interface DonutSlice {
@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
   },
   centerLabel: {
     fontSize: fontSize.xl,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
   },
   centerSub: {
     fontSize: fontSize.xs,

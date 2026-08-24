@@ -7,7 +7,7 @@ import { BottomSheet } from '../../components/ui/BottomSheet';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Screen } from '../../components/ui/Screen';
-import { fontSize, radius, spacing } from '../../constants/theme';
+import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { getImageUrl } from '../../lib/utils';
 import { useAuthStore } from '../../store/authStore';
@@ -83,12 +83,12 @@ export default function ProfileScreen() {
               { backgroundColor: isPremium ? '#FEF3C7' : colors.border },
             ]}
           >
-            <Text style={{ fontSize: 10, fontWeight: '700', color: isPremium ? '#92400E' : colors.textSecondary }}>
+            <Text style={{ fontSize: 10, fontFamily: fonts.bold, color: isPremium ? '#92400E' : colors.textSecondary }}>
               {isPremium ? 'PREMIUM' : 'FREE'}
             </Text>
           </View>
         </View>
-        <Text style={{ color: colors.textPrimary, fontSize: fontSize.lg, fontWeight: '700' }}>
+        <Text style={{ color: colors.textPrimary, fontSize: fontSize.lg, fontFamily: fonts.bold }}>
           {user?.name || 'User'}
         </Text>
         <Text style={{ color: colors.textMuted, fontSize: fontSize.xs, marginTop: 4 }}>
@@ -99,7 +99,7 @@ export default function ProfileScreen() {
       {/* Menu sections */}
       {sections.map((section) => (
         <View key={section.title} style={{ gap: spacing.s2 }}>
-          <Text style={{ color: colors.textMuted, fontSize: fontSize.xs, fontWeight: '600', letterSpacing: 1 }}>
+          <Text style={{ color: colors.textMuted, fontSize: fontSize.xs, fontFamily: fonts.semibold, letterSpacing: 1 }}>
             {section.title}
           </Text>
           <Card padded={false}>
@@ -119,7 +119,7 @@ export default function ProfileScreen() {
                   <Ionicons name={item.icon} size={20} color={item.iconColor} />
                 </View>
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={{ color: colors.textPrimary, fontWeight: '600', fontSize: fontSize.md }}>{item.title}</Text>
+                  <Text style={{ color: colors.textPrimary, fontFamily: fonts.semibold, fontSize: fontSize.md }}>{item.title}</Text>
                   <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }} numberOfLines={1}>
                     {item.subtitle}
                   </Text>
@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
   },
   avatarInitial: {
     fontSize: 36,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
     color: '#fff',
   },
   planBadge: {

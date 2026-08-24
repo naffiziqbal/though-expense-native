@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Screen } from '../../components/ui/Screen';
-import { fontSize, radius, spacing } from '../../constants/theme';
+import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { api, getErrorMessage } from '../../lib/api';
 import { toast } from '../../store/toastStore';
@@ -47,7 +47,7 @@ export default function ForgotPasswordScreen() {
           </View>
           <Text style={[styles.title, { color: colors.textPrimary }]}>Check your email</Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary, textAlign: 'center' }]}>
-            If an account exists for <Text style={{ fontWeight: '700', color: colors.textPrimary }}>{email}</Text>,
+            If an account exists for <Text style={{ fontFamily: fonts.bold, color: colors.textPrimary }}>{email}</Text>,
             you’ll receive a password reset link shortly.
           </Text>
           <Text style={[styles.subtitle, { color: colors.textMuted, textAlign: 'center' }]}>
@@ -57,7 +57,7 @@ export default function ForgotPasswordScreen() {
         <Link href="/(auth)/login" asChild>
           <Pressable style={styles.backRow}>
             <Ionicons name="arrow-back" size={18} color={colors.accent} />
-            <Text style={{ color: colors.accent, fontSize: fontSize.sm, fontWeight: '600' }}>Back to login</Text>
+            <Text style={{ color: colors.accent, fontSize: fontSize.sm, fontFamily: fonts.semibold }}>Back to login</Text>
           </Pressable>
         </Link>
       </Screen>
@@ -92,7 +92,7 @@ export default function ForgotPasswordScreen() {
       <Link href="/(auth)/login" asChild>
         <Pressable style={styles.backRow}>
           <Ionicons name="arrow-back" size={18} color={colors.textSecondary} />
-          <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, fontWeight: '500' }}>Back to login</Text>
+          <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, fontFamily: fonts.medium }}>Back to login</Text>
         </Pressable>
       </Link>
     </Screen>
@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: fontSize.xl,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
   },
   subtitle: {
     fontSize: fontSize.sm,

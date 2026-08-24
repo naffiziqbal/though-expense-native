@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { fontSize, radius, spacing } from '../../constants/theme';
+import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { getCategoryBadgeColors } from '../../lib/utils';
 
 export function CategoryBadge({ category }: { category: string }) {
@@ -21,6 +21,6 @@ const styles = StyleSheet.create({
   },
   text: {
     fontSize: fontSize.xs,
-    fontWeight: '600',
+    fontFamily: fonts.semibold,
   },
 });

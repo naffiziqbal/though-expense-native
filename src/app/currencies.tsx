@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Screen } from '../components/ui/Screen';
-import { fontSize, radius, spacing } from '../constants/theme';
+import { fonts, fontSize, radius, spacing } from '../constants/theme';
 import { useTheme } from '../hooks/useTheme';
 import { api, getErrorMessage } from '../lib/api';
 import { CURRENCIES } from '../lib/currencies';
@@ -46,7 +46,7 @@ export default function CurrenciesScreen() {
         <View style={[styles.iconBubble, { backgroundColor: '#E0E7FF' }]}>
           <Ionicons name="globe" size={26} color="#4F46E5" />
         </View>
-        <Text style={{ color: colors.textPrimary, fontSize: fontSize.lg, fontWeight: '700', marginTop: spacing.s3 }}>
+        <Text style={{ color: colors.textPrimary, fontSize: fontSize.lg, fontFamily: fonts.bold, marginTop: spacing.s3 }}>
           Currency
         </Text>
         <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, marginTop: 4 }}>
@@ -67,7 +67,7 @@ export default function CurrenciesScreen() {
                 i < CURRENCIES.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
               ]}
             >
-              <Text style={{ color: colors.textPrimary, fontWeight: '500' }}>{currency.label}</Text>
+              <Text style={{ color: colors.textPrimary, fontFamily: fonts.medium }}>{currency.label}</Text>
               {selected ? (
                 <View style={[styles.check, { backgroundColor: colors.accent }]}>
                   <Ionicons name="checkmark" size={14} color={colors.onAccent} />

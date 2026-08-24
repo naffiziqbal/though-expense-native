@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Screen } from '../../components/ui/Screen';
-import { fontSize, radius, spacing } from '../../constants/theme';
+import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { api, getErrorMessage } from '../../lib/api';
 import { toast } from '../../store/toastStore';
@@ -122,14 +122,14 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: fontSize.xl,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
   },
   subtitle: {
     fontSize: fontSize.sm,
   },
   link: {
     fontSize: fontSize.sm,
-    fontWeight: '600',
+    fontFamily: fonts.semibold,
   },
   footerRow: {
     flexDirection: 'row',

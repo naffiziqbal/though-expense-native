@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { fontSize, spacing } from '../../constants/theme';
+import { fonts, fontSize, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { Button } from './Button';
 
@@ -33,7 +33,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: fontSize.lg,
-    fontWeight: '600',
+    fontFamily: fonts.semibold,
     textAlign: 'center',
   },
   message: {

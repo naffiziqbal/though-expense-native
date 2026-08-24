@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { fontSize, radius, spacing } from '../../constants/theme';
+import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 
 interface Segment {
@@ -29,7 +29,7 @@ export function SegmentedControl({ segments, value, onChange }: SegmentedControl
             <Text
               style={{
                 color: active ? colors.onAccent : colors.textSecondary,
-                fontWeight: active ? '600' : '500',
+                fontFamily: active ? fonts.semibold : fonts.medium,
                 fontSize: fontSize.sm,
               }}
             >

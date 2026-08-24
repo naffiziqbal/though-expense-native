@@ -16,7 +16,7 @@ import { CategoryIconBubble } from '../../components/CategoryIconBubble';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { DateField } from '../../components/ui/DateField';
-import { fontSize, radius, spacing } from '../../constants/theme';
+import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { api, getErrorMessage } from '../../lib/api';
 import { formatCurrency, getCategoryFromKeyword, parseExpenseInputLocally } from '../../lib/utils';
@@ -195,9 +195,18 @@ export default function AddExpenseScreen() {
               style={[styles.textarea, { color: colors.textPrimary }]}
             />
             <View style={[styles.mediaBar, { borderTopColor: colors.border }]}>
-              <Text style={{ color: colors.textMuted, fontSize: fontSize.xs, flex: 1 }}>
-                e.g. “coffee 120, uber 250 and groceries 900”
-              </Text>
+              {receiptItems.length > 0 ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                  <Ionicons name="sparkles" size={14} color={colors.accent} />
+                  <Text style={{ color: colors.accent, fontSize: fontSize.sm, fontFamily: fonts.semibold }}>
+                    {receiptItems.length} item{receiptItems.length !== 1 ? 's' : ''} detected
+                  </Text>
+                </View>
+              ) : (
+                <Text style={{ color: colors.textMuted, fontSize: fontSize.xs, flex: 1 }}>
+                  e.g. “coffee 120, uber 250 and groceries 900”
+                </Text>
+              )}
               <View style={{ width: 150 }}>
                 <DateField value={selectedDate} onChange={setSelectedDate} maximumDate={new Date()} />
               </View>
@@ -221,7 +230,7 @@ export default function AddExpenseScreen() {
                         style={{
                           color: colors.textPrimary,
                           fontSize: fontSize.md,
-                          fontWeight: '500',
+                          fontFamily: fonts.medium,
                           borderBottomWidth: 1,
                           borderBottomColor: colors.accent,
                           paddingVertical: 2,
@@ -229,13 +238,13 @@ export default function AddExpenseScreen() {
                       />
                     ) : (
                       <Pressable onPress={() => canDelete && setEditingId(item.id)}>
-                        <Text style={{ color: colors.textPrimary, fontWeight: '500', fontSize: fontSize.md }} numberOfLines={1}>
+                        <Text style={{ color: colors.textPrimary, fontFamily: fonts.medium, fontSize: fontSize.md }} numberOfLines={1}>
                           {item.description}
                         </Text>
                       </Pressable>
                     )}
                   </View>
-                  <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>
+                  <Text style={{ color: colors.textPrimary, fontFamily: fonts.bold }}>
                     -{formatCurrency(item.amount, currency)}
                   </Text>
                   {canDelete ? (
@@ -277,7 +286,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: fontSize.xl,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
   },
   textarea: {
     minHeight: 120,

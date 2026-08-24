@@ -7,7 +7,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Screen } from '../../components/ui/Screen';
 import { SelectSheet } from '../../components/ui/SelectSheet';
-import { fontSize, radius, spacing } from '../../constants/theme';
+import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { api, getErrorMessage } from '../../lib/api';
 import { CURRENCIES, getDefaultCurrency } from '../../lib/currencies';
@@ -148,7 +148,7 @@ export default function SignupScreen() {
         <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }}>Already have an account? </Text>
         <Link href="/(auth)/login" asChild>
           <Pressable>
-            <Text style={{ color: colors.accent, fontSize: fontSize.sm, fontWeight: '600' }}>Sign in</Text>
+            <Text style={{ color: colors.accent, fontSize: fontSize.sm, fontFamily: fonts.semibold }}>Sign in</Text>
           </Pressable>
         </Link>
       </View>
@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: fontSize.xl,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
   },
   subtitle: {
     fontSize: fontSize.sm,
