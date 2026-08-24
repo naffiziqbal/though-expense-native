@@ -1,14 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useRouter } from 'expo-router';
-import { endOfMonth, format, startOfMonth } from 'date-fns';
+import { useFocusEffect } from 'expo-router';
+import { useRouter } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { DonutChart } from '../../components/charts/DonutChart';
-import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import { BottomSheet } from '../../components/ui/BottomSheet';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Screen } from '../../components/ui/Screen';
+import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { api, getErrorMessage } from '../../lib/api';
@@ -19,50 +19,82 @@ import { useAuthStore } from '../../store/authStore';
 
 const DEFAULT_CATEGORIES_VISIBLE = 5;
 
+interface RecurringItem {
+  description: string;
+  category: string;
+  averageAmount: number;
+  currency: string;
+  occurrences: number;
+  monthsSeen: number;
+  lastDate: string;
+}
+
+function iso(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function monthRange(year: number, month: number): { startDate: string; endDate: string } {
+  return {
+    startDate: iso(new Date(year, month - 1, 1)),
+    endDate: iso(new Date(year, month, 0)),
+  };
+}
+
+function monthLabel(year: number, month: number): string {
+  return new Date(year, month - 1, 1).toLocaleString('en-US', { month: 'long', year: 'numeric' });
+}
+
 export default function InsightsScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const { user } = useAuthStore();
   const isPremium = user?.isPremium ?? false;
 
+  const now = new Date();
+  const [mode, setMode] = useState<'month' | 'all'>('month');
+  const [selYear, setSelYear] = useState(now.getFullYear());
+  const [selMonth, setSelMonth] = useState(now.getMonth() + 1);
+  const [monthSheetOpen, setMonthSheetOpen] = useState(false);
+
   const [insights, setInsights] = useState<Insight[]>([]);
   const [summary, setSummary] = useState<CategorySummary | null>(null);
+  const [prevSummary, setPrevSummary] = useState<CategorySummary | null>(null);
+  const [recurring, setRecurring] = useState<RecurringItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [othersSheetOpen, setOthersSheetOpen] = useState(false);
-  const [period, setPeriod] = useState<'month' | 'all'>('month');
   const [categoriesExpanded, setCategoriesExpanded] = useState(false);
 
-  const dateRange = useMemo(() => {
-    if (period === 'all') return isPremium ? 'All time' : 'Last 3 months (free plan)';
-    const start = startOfMonth(new Date());
-    const end = endOfMonth(new Date());
-    return `${format(start, 'MMM dd')} - ${format(end, 'MMM dd, yyyy')}`;
-  }, [period, isPremium]);
+  const dateLabel = mode === 'all' ? (isPremium ? 'All time' : 'Last 3 months (free plan)') : monthLabel(selYear, selMonth);
 
-  const fetchAll = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    const iso = (d: Date) =>
-      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    const filters =
-      period === 'month'
-        ? { startDate: iso(startOfMonth(new Date())), endDate: iso(endOfMonth(new Date())) }
-        : undefined;
-    try {
-      const [insightsRes, summaryRes] = await Promise.all([
-        api.getInsights({ limit: 10 }),
-        api.getCategorySummary(filters),
-      ]);
-      if (insightsRes.success) setInsights(insightsRes.data.insights);
-      if (summaryRes.success) setSummary(summaryRes.data);
-    } catch (error) {
-      console.error('Failed to fetch insights:', error);
-    } finally {
-      setIsLoading(false);
-      setRefreshing(false);
-    }
-  }, [period]);
+  const fetchAll = useCallback(
+    async (isRefresh = false) => {
+      if (isRefresh) setRefreshing(true);
+      const filters = mode === 'month' ? monthRange(selYear, selMonth) : undefined;
+      // Previous month for deltas (month view only)
+      const prevDate = new Date(selYear, selMonth - 2, 1);
+      const prevFilters = monthRange(prevDate.getFullYear(), prevDate.getMonth() + 1);
+      try {
+        const [insightsRes, summaryRes, prevRes, recurringRes] = await Promise.all([
+          api.getInsights({ limit: 10 }),
+          api.getCategorySummary(filters),
+          mode === 'month' ? api.getCategorySummary(prevFilters) : Promise.resolve(null),
+          api.getRecurringExpenses().catch(() => null),
+        ]);
+        if (insightsRes.success) setInsights(insightsRes.data.insights);
+        if (summaryRes.success) setSummary(summaryRes.data);
+        setPrevSummary(prevRes?.success ? prevRes.data : null);
+        if (recurringRes?.success) setRecurring(recurringRes.data.recurring);
+      } catch (error) {
+        console.error('Failed to fetch insights:', error);
+      } finally {
+        setIsLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [mode, selYear, selMonth]
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -77,7 +109,6 @@ export default function InsightsScreen() {
       if (response.success) {
         toast.success('Insights generated successfully');
         setInsights(response.data.insights);
-        setSummary(response.data.summary);
       }
     } catch (error) {
       toast.error(getErrorMessage(error, 'Failed to generate insights'));
@@ -110,6 +141,21 @@ export default function InsightsScreen() {
       .sort((a, b) => b.amount - a.amount);
   }, [summary]);
 
+  /** Month-over-month delta per category: pct change, or 'new' */
+  const deltas = useMemo(() => {
+    if (mode !== 'month' || !prevSummary) return {};
+    const map: Record<string, { pct: number } | 'new'> = {};
+    for (const { category, amount } of barData) {
+      const prev = prevSummary.byCategory[category];
+      if (!prev || prev <= 0) {
+        map[category] = 'new';
+      } else {
+        map[category] = { pct: Math.round(((amount - prev) / prev) * 100) };
+      }
+    }
+    return map;
+  }, [mode, prevSummary, barData]);
+
   const maxAmount = barData.length > 0 ? Math.max(...barData.map((d) => d.amount)) : 0;
   const visibleBarData = categoriesExpanded ? barData : barData.slice(0, DEFAULT_CATEGORIES_VISIBLE);
   const hasMoreCategories = barData.length > DEFAULT_CATEGORIES_VISIBLE;
@@ -127,13 +173,37 @@ export default function InsightsScreen() {
       ? `${(summary.totalSpent / 1000).toFixed(0)}k`
       : `${Math.round(summary?.totalSpent ?? 0)}`;
 
+  // last 24 months for the picker
+  const monthYearOptions = useMemo(
+    () =>
+      Array.from({ length: 24 }, (_, i) => {
+        const d = new Date();
+        d.setDate(1);
+        d.setMonth(d.getMonth() - i);
+        return { month: d.getMonth() + 1, year: d.getFullYear() };
+      }),
+    []
+  );
+
   return (
     <Screen safeTop refreshing={refreshing} onRefresh={() => fetchAll(true)}>
       {/* Header */}
       <View style={styles.headerRow}>
         <View>
           <Text style={[styles.title, { color: colors.textPrimary }]}>Spending Analysis</Text>
-          <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, marginTop: 2 }}>{dateRange}</Text>
+          {mode === 'month' ? (
+            <Pressable
+              onPress={() => setMonthSheetOpen(true)}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 }}
+            >
+              <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, fontFamily: fonts.semibold }}>
+                {dateLabel}
+              </Text>
+              <Ionicons name="chevron-down" size={14} color={colors.textMuted} />
+            </Pressable>
+          ) : (
+            <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, marginTop: 2 }}>{dateLabel}</Text>
+          )}
         </View>
         <Button title="Refresh" variant="ghost" size="sm" onPress={handleGenerateInsights} loading={isGenerating} />
       </View>
@@ -141,11 +211,11 @@ export default function InsightsScreen() {
       {/* Period switcher */}
       <SegmentedControl
         segments={[
-          { value: 'month', label: 'This month' },
+          { value: 'month', label: 'Monthly' },
           { value: 'all', label: 'All time' },
         ]}
-        value={period}
-        onChange={(v) => setPeriod(v as 'month' | 'all')}
+        value={mode}
+        onChange={(v) => setMode(v as 'month' | 'all')}
       />
 
       {/* Big picture donut */}
@@ -188,33 +258,65 @@ export default function InsightsScreen() {
         </Card>
       ) : null}
 
-      {/* Top spending categories */}
+      {/* Empty state for the selected period */}
+      {summary && summary.transactionCount === 0 && !isLoading ? (
+        <Card style={{ alignItems: 'center', paddingVertical: spacing.s6, gap: spacing.s2 }}>
+          <Ionicons name="bar-chart-outline" size={36} color={colors.textMuted} />
+          <Text style={{ color: colors.textPrimary, fontFamily: fonts.semibold }}>No spending in {dateLabel}</Text>
+          <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }}>Pick another month or add expenses.</Text>
+        </Card>
+      ) : null}
+
+      {/* Top spending categories with MoM deltas */}
       {summary && summary.transactionCount > 0 && barData.length > 0 ? (
         <Card>
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Top Spending Categories</Text>
           <View style={{ gap: spacing.s3, marginTop: spacing.s3 }}>
-            {visibleBarData.map((item) => (
-              <View key={item.category} style={{ gap: spacing.s1 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <Text style={{ color: colors.textPrimary, fontSize: fontSize.sm, fontFamily: fonts.medium }} numberOfLines={1}>
-                    {item.category}
-                  </Text>
-                  <Text style={{ color: colors.textPrimary, fontSize: fontSize.sm, fontFamily: fonts.semibold }}>
-                    {formatCurrency(item.amount, summary.currency)}
-                  </Text>
+            {visibleBarData.map((item) => {
+              const delta = deltas[item.category];
+              return (
+                <View key={item.category} style={{ gap: spacing.s1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.s2 }}>
+                    <Text
+                      style={{ color: colors.textPrimary, fontSize: fontSize.sm, fontFamily: fonts.medium, flex: 1 }}
+                      numberOfLines={1}
+                    >
+                      {item.category}
+                    </Text>
+                    {delta === 'new' ? (
+                      <Text style={[styles.deltaChip, { color: colors.accent, backgroundColor: colors.accentSoft }]}>
+                        new
+                      </Text>
+                    ) : delta && delta.pct !== 0 ? (
+                      <Text
+                        style={[
+                          styles.deltaChip,
+                          delta.pct > 0
+                            ? { color: colors.error, backgroundColor: colors.errorSoft }
+                            : { color: colors.success, backgroundColor: colors.accentSoft },
+                        ]}
+                      >
+                        {delta.pct > 0 ? '↑' : '↓'}
+                        {Math.abs(delta.pct)}% vs prev
+                      </Text>
+                    ) : null}
+                    <Text style={{ color: colors.textPrimary, fontSize: fontSize.sm, fontFamily: fonts.semibold }}>
+                      {formatCurrency(item.amount, summary.currency)}
+                    </Text>
+                  </View>
+                  <View style={[styles.barTrack, { backgroundColor: colors.border }]}>
+                    <View
+                      style={{
+                        width: `${maxAmount ? (item.amount / maxAmount) * 100 : 0}%`,
+                        backgroundColor: getCategoryChartColor(item.category),
+                        height: 8,
+                        borderRadius: radius.full,
+                      }}
+                    />
+                  </View>
                 </View>
-                <View style={[styles.barTrack, { backgroundColor: colors.border }]}>
-                  <View
-                    style={{
-                      width: `${maxAmount ? (item.amount / maxAmount) * 100 : 0}%`,
-                      backgroundColor: getCategoryChartColor(item.category),
-                      height: 8,
-                      borderRadius: radius.full,
-                    }}
-                  />
-                </View>
-              </View>
-            ))}
+              );
+            })}
           </View>
           {hasMoreCategories ? (
             <Pressable onPress={() => setCategoriesExpanded(!categoriesExpanded)} style={{ marginTop: spacing.s3 }}>
@@ -223,6 +325,36 @@ export default function InsightsScreen() {
               </Text>
             </Pressable>
           ) : null}
+        </Card>
+      ) : null}
+
+      {/* Recurring expenses */}
+      {recurring.length > 0 ? (
+        <Card>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.s2 }}>
+            <Ionicons name="repeat" size={18} color={colors.accent} />
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Recurring</Text>
+          </View>
+          <Text style={{ color: colors.textMuted, fontSize: fontSize.xs, marginTop: 2 }}>
+            Detected from your history — likely subscriptions & bills
+          </Text>
+          <View style={{ gap: spacing.s3, marginTop: spacing.s3 }}>
+            {recurring.map((item) => (
+              <View key={item.description} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.s3 }}>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={{ color: colors.textPrimary, fontFamily: fonts.medium, fontSize: fontSize.sm }} numberOfLines={1}>
+                    {item.description}
+                  </Text>
+                  <Text style={{ color: colors.textMuted, fontSize: fontSize.xs }}>
+                    {item.category} · seen {item.monthsSeen} months
+                  </Text>
+                </View>
+                <Text style={{ color: colors.textPrimary, fontFamily: fonts.semibold, fontSize: fontSize.sm }}>
+                  ~{formatCurrency(item.averageAmount, item.currency)}/mo
+                </Text>
+              </View>
+            ))}
+          </View>
         </Card>
       ) : null}
 
@@ -251,7 +383,7 @@ export default function InsightsScreen() {
           </Text>
         ) : insights.length === 0 ? (
           <View style={{ alignItems: 'center', paddingVertical: spacing.s5, gap: spacing.s2 }}>
-            <Text style={{ fontSize: 40 }}>💡</Text>
+            <Ionicons name="bulb-outline" size={36} color={colors.textMuted} />
             <Text style={{ color: colors.textPrimary, fontFamily: fonts.semibold, fontSize: fontSize.lg }}>No insights yet</Text>
             <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, textAlign: 'center' }}>
               Generate insights to get AI-powered analysis of your spending
@@ -262,7 +394,9 @@ export default function InsightsScreen() {
           <View style={{ gap: spacing.s3, marginTop: spacing.s3 }}>
             {insights.map((insight) => {
               const isAttention =
-                insight.type === 'warning' || insight.type.toLowerCase().includes('attention') || insight.type.toLowerCase().includes('high');
+                insight.type === 'warning' ||
+                insight.type.toLowerCase().includes('attention') ||
+                insight.type.toLowerCase().includes('high');
               const tint = isAttention ? colors.warning : '#3B82F6';
               return (
                 <View key={insight.id} style={[styles.insightCard, { borderColor: tint, backgroundColor: colors.bgCard }]}>
@@ -283,6 +417,36 @@ export default function InsightsScreen() {
           </View>
         )}
       </Card>
+
+      {/* Month picker sheet */}
+      <BottomSheet visible={monthSheetOpen} onClose={() => setMonthSheetOpen(false)} title="Select month">
+        <View style={{ gap: 4 }}>
+          {monthYearOptions.map(({ month: m, year: y }) => {
+            const isSelected = m === selMonth && y === selYear;
+            return (
+              <Pressable
+                key={`${y}-${m}`}
+                onPress={() => {
+                  setSelMonth(m);
+                  setSelYear(y);
+                  setMonthSheetOpen(false);
+                }}
+                style={[styles.monthOption, isSelected && { backgroundColor: colors.accentSoft }]}
+              >
+                <Text
+                  style={{
+                    color: isSelected ? colors.accent : colors.textPrimary,
+                    fontSize: fontSize.md,
+                    fontFamily: fonts.medium,
+                  }}
+                >
+                  {monthLabel(y, m)}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </BottomSheet>
 
       {/* Others breakdown sheet */}
       <BottomSheet visible={othersSheetOpen} onClose={() => setOthersSheetOpen(false)} title="Other Categories">
@@ -334,6 +498,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
     overflow: 'hidden',
   },
+  deltaChip: {
+    fontSize: 11,
+    fontFamily: fonts.semibold,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.s2,
+    paddingVertical: 2,
+    overflow: 'hidden',
+  },
   lockCircle: {
     width: 48,
     height: 48,
@@ -358,5 +530,10 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     padding: spacing.s3,
+  },
+  monthOption: {
+    paddingHorizontal: spacing.s3,
+    paddingVertical: spacing.s3,
+    borderRadius: radius.md,
   },
 });
