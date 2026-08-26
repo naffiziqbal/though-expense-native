@@ -14,7 +14,7 @@ import { Screen } from '../../components/ui/Screen';
 import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { api } from '../../lib/api';
-import type { BudgetSummary, CategorySummary, Expense, Insight } from '../../lib/types';
+import type { BudgetSummary, CategorySummary, Expense, Goal, Insight } from '../../lib/types';
 import { formatCurrency, formatDate } from '../../lib/utils';
 import { useAuthStore } from '../../store/authStore';
 
@@ -44,6 +44,7 @@ export default function HomeScreen() {
   const [recentExpenses, setRecentExpenses] = useState<Expense[]>([]);
   const [insights, setInsights] = useState<Insight[]>([]);
   const [budget, setBudget] = useState<BudgetSummary | null>(null);
+  const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
@@ -59,16 +60,18 @@ export default function HomeScreen() {
     const { startDate, endDate } = getCurrentMonthRange();
     if (isRefresh) setRefreshing(true);
     try {
-      const [summaryRes, expensesRes, insightsRes, budgetRes] = await Promise.all([
+      const [summaryRes, expensesRes, insightsRes, budgetRes, goalsRes] = await Promise.all([
         api.getCategorySummary({ startDate, endDate }),
         api.getExpenses({ limit: 5, startDate, endDate }),
         api.getInsights({ limit: 10 }),
         api.getCurrentBudget(),
+        api.getGoals().catch(() => null),
       ]);
       if (summaryRes.success) setSummary(summaryRes.data);
       if (expensesRes.success) setRecentExpenses(expensesRes.data.expenses);
       if (insightsRes.success) setInsights(insightsRes.data.insights);
       if (budgetRes.success) setBudget(budgetRes.data);
+      if (goalsRes?.success) setGoals(goalsRes.data.goals.filter((g) => g.status === 'active'));
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
     } finally {
@@ -238,6 +241,49 @@ export default function HomeScreen() {
           </View>
         </Card>
       </View>
+
+      {/* AI advisor entry */}
+      <Pressable onPress={() => router.push('/assistant')}>
+        <Card style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.s3 }}>
+          <View style={[styles.advisorIcon, { backgroundColor: colors.accentSoft }]}>
+            <Ionicons name="sparkles" size={20} color={colors.accent} />
+          </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={{ color: colors.textPrimary, fontFamily: fonts.semibold }}>Ask your AI advisor</Text>
+            <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }} numberOfLines={1}>
+              Why did I spend so much? How can I save more?
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </Card>
+      </Pressable>
+
+      {/* Savings goals snapshot */}
+      {goals.length > 0 ? (
+        <View style={{ gap: spacing.s3 }}>
+          <View style={styles.sectionRow}>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Savings Goals</Text>
+            <Pressable onPress={() => router.push('/goals')}>
+              <Text style={{ color: colors.accent, fontFamily: fonts.semibold, fontSize: fontSize.sm }}>View All</Text>
+            </Pressable>
+          </View>
+          <Card style={{ gap: spacing.s3 }}>
+            {goals.slice(0, 2).map((goal) => (
+              <Pressable key={goal.id} onPress={() => router.push('/goals')} style={{ gap: spacing.s1 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.s2 }}>
+                  <Text style={{ color: colors.textPrimary, fontFamily: fonts.medium, flex: 1 }} numberOfLines={1}>
+                    {goal.name}
+                  </Text>
+                  <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }}>
+                    {formatCurrency(goal.savedAmount, goal.currency)} / {formatCurrency(goal.targetAmount, goal.currency)}
+                  </Text>
+                </View>
+                <ProgressBar percentage={goal.progress * 100} />
+              </Pressable>
+            ))}
+          </Card>
+        </View>
+      ) : null}
 
       {/* Zone D: Recent transactions */}
       {recentExpenses.length > 0 ? (
@@ -443,5 +489,12 @@ const styles = StyleSheet.create({
   notification: {
     padding: spacing.s3,
     borderRadius: radius.md,
+  },
+  advisorIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

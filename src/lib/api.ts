@@ -2,19 +2,26 @@
 import axios, { AxiosError, AxiosInstance } from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import type {
+  AdvisorAnswer,
   AuthResponse,
+  BriefingInsight,
   BudgetSummary,
   CategoryBudgetProgress,
   CategorySummaryResponse,
+  ChatTurn,
   Expense,
   ExpenseFilters,
+  ExpenseSearchResult,
   ExpensesResponse,
   GenerateInsightsResponse,
+  Goal,
   InsightsResponse,
   LoginRequest,
   ParseExpenseRequest,
   ParseExpenseResponse,
+  SavingsPlan,
   SignupRequest,
+  SpendingIntelligence,
   UpdateExpenseRequest,
 } from './types';
 
@@ -238,6 +245,21 @@ class ApiClient {
     return response.data;
   }
 
+  /** Create many expenses in ONE request (avoids per-item rate-limit pressure). */
+  async createExpensesBatch(
+    expenses: Array<{
+      description: string;
+      amount: number;
+      currency?: string;
+      category?: string;
+      date?: string;
+      rawInput?: string;
+    }>
+  ): Promise<{ success: boolean; message: string; data: { expenses: Expense[] } }> {
+    const response = await this.client.post('/api/expenses/batch', { expenses });
+    return response.data;
+  }
+
   async getExpenses(filters?: ExpenseFilters): Promise<ExpensesResponse> {
     const response = await this.client.get<ExpensesResponse>('/api/expenses', { params: filters });
     return response.data;
@@ -357,6 +379,81 @@ class ApiClient {
 
   async getInsights(filters?: { type?: string; limit?: number }): Promise<InsightsResponse> {
     const response = await this.client.get<InsightsResponse>('/api/insights', { params: filters });
+    return response.data;
+  }
+
+  async getIntelligence(): Promise<{ success: boolean; data: SpendingIntelligence }> {
+    const response = await this.client.get('/api/insights/intelligence');
+    return response.data;
+  }
+
+  async getLatestBriefing(): Promise<{ success: boolean; data: { briefing: BriefingInsight | null } }> {
+    const response = await this.client.get('/api/insights/briefing/latest');
+    return response.data;
+  }
+
+  async generateBriefing(): Promise<{ success: boolean; message?: string; data: { briefing: BriefingInsight | null } }> {
+    const response = await this.client.post('/api/insights/briefing/generate', {}, { timeout: 120000 });
+    return response.data;
+  }
+
+  // Assistant endpoints
+  async askAssistant(question: string, history: ChatTurn[] = []): Promise<{ success: boolean; data: AdvisorAnswer }> {
+    const response = await this.client.post('/api/assistant/ask', { question, history }, { timeout: 120000 });
+    return response.data;
+  }
+
+  async askWhySpendingChanged(): Promise<{ success: boolean; data: AdvisorAnswer }> {
+    const response = await this.client.post('/api/assistant/why', {}, { timeout: 120000 });
+    return response.data;
+  }
+
+  async getSavingsPlan(
+    targetAmount: number
+  ): Promise<{ success: boolean; data: { plan: SavingsPlan; remainingFreeQuestions: number | null } }> {
+    const response = await this.client.post('/api/assistant/savings-plan', { targetAmount }, { timeout: 120000 });
+    return response.data;
+  }
+
+  async searchExpenses(q: string): Promise<{ success: boolean; data: ExpenseSearchResult }> {
+    const response = await this.client.get('/api/assistant/search', { params: { q }, timeout: 60000 });
+    return response.data;
+  }
+
+  // Goal endpoints
+  async getGoals(): Promise<{ success: boolean; data: { goals: Goal[] } }> {
+    const response = await this.client.get('/api/goals');
+    return response.data;
+  }
+
+  async createGoal(payload: {
+    name: string;
+    targetAmount: number;
+    currency?: string;
+    deadline?: string;
+  }): Promise<{ success: boolean; message: string; data: { goal: Goal } }> {
+    const response = await this.client.post('/api/goals', payload);
+    return response.data;
+  }
+
+  async updateGoal(
+    id: string,
+    payload: { name?: string; targetAmount?: number; deadline?: string | null; status?: string }
+  ): Promise<{ success: boolean; message: string; data: { goal: Goal } }> {
+    const response = await this.client.patch(`/api/goals/${id}`, payload);
+    return response.data;
+  }
+
+  async contributeToGoal(
+    id: string,
+    amount: number
+  ): Promise<{ success: boolean; message: string; data: { goal: Goal } }> {
+    const response = await this.client.post(`/api/goals/${id}/contribute`, { amount });
+    return response.data;
+  }
+
+  async deleteGoal(id: string): Promise<{ success: boolean; message: string }> {
+    const response = await this.client.delete(`/api/goals/${id}`);
     return response.data;
   }
 

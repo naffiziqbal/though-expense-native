@@ -36,17 +36,27 @@ SAY IT. WE TRACK IT.
 SEE WHERE IT GOES
 • A calm home screen: monthly total, budget health, top category, recent activity
 • Spending analysis with category breakdowns and AI observations that actually say something
+• Ask in plain language: "coffee last month", "anything over 500" — search understands meaning, not just words
 • Full expense history with filters by category and date
 
-BUDGETS WITHOUT SPREADSHEETS
+ASK YOUR MONEY ANYTHING
+• "Why did I spend so much this month?" — the AI advisor answers from YOUR real history
+• "How can I save 20,000 next month?" — get a realistic plan built from your actual spending
+• Smart alerts catch unusual spending, rising categories and quiet money leaks
+• A weekly financial briefing lands every Monday: what you spent, what changed, what to do next
+
+BUDGETS, GOALS & LIMITS
 • Set a monthly limit, or type "Food 500, Rent 2000, Gas 100" and let AI build category budgets
+• Savings goals with progress tracking — an emergency fund, a trip, a new phone
 • Progress bars, safe-to-spend, and alerts before you overshoot
 
-PREMIUM (subscription)
+PREMIUM ($6.99/month, $60/year, or $99 once for lifetime)
+• Unlimited AI advisor questions (free accounts get 5/month)
+• Weekly financial briefing by email
+• Smart alerts across 12 months of history
 • Receipt scanning — snap a photo, AI extracts every line item
 • Full history (free accounts see the last 3 months)
 • Export to CSV or PDF
-• Daily & weekly AI insights
 • No ads
 
 YOUR DATA, YOUR CALL
@@ -80,8 +90,9 @@ expect **Everyone**.
 
 ```
 • Log expenses in plain language — AI parses and categorizes
-• Monthly budgets and AI category budgets
-• Spending analysis and AI insights
+• AI advisor: ask why spending changed and how to save
+• Weekly financial briefing + smart spending alerts
+• Savings goals, monthly budgets and AI category budgets
 • Premium: receipt scanning, full history, CSV/PDF export
 ```
 
@@ -91,7 +102,10 @@ expect **Everyone**.
 2. Switch build to .aab (`eas.json`: remove `"buildType": "apk"` from production) and rebuild
 3. Data safety + content rating forms (answers above)
 4. If the developer account is a new personal account: closed test, 12 testers, 14 days
-5. Create the `premium` subscription products + RevenueCat wiring (see repo README)
+5. Create the `premium` entitlement products + RevenueCat wiring (see repo README):
+   monthly subscription $6.99, yearly subscription $60, and a $99 lifetime
+   one-time (non-consumable) product — attach all three to the `premium`
+   entitlement and the default offering (package types MONTHLY / ANNUAL / LIFETIME)
 
 ## Re-rendering images
 

@@ -160,6 +160,138 @@ export interface GenerateInsightsResponse {
   };
 }
 
+// --- AI advisor / assistant ---
+
+export interface ChatTurn {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface AdvisorAnswer {
+  answer: string;
+  followUps: string[];
+  remainingFreeQuestions: number | null;
+}
+
+export interface SavingsPlanStep {
+  category: string;
+  action: string;
+  estimatedMonthlySaving: number;
+}
+
+export interface SavingsPlan {
+  feasible: boolean;
+  targetAmount: number;
+  currency: string;
+  estimatedTotalSaving: number;
+  summary: string;
+  steps: SavingsPlanStep[];
+}
+
+export interface SearchResultExpense {
+  id: string;
+  description: string;
+  amount: number;
+  currency: string;
+  category: string;
+  date: string;
+  matchType: 'semantic' | 'keyword' | 'both';
+}
+
+export interface ExpenseSearchResult {
+  query: string;
+  expenses: SearchResultExpense[];
+  total: number;
+  totalAmount: number;
+  currency: string;
+}
+
+// --- Spending intelligence ---
+
+export interface IntelligenceAnomaly {
+  type: 'category_spike' | 'large_transaction';
+  message: string;
+  category?: string;
+  amount?: number;
+  currentAmount?: number;
+}
+
+export interface IntelligenceTrend {
+  category: string;
+  monthlyAmounts: number[];
+  changePercent: number;
+  currency: string;
+  message: string;
+}
+
+export interface IntelligenceWaste {
+  type: 'price_creep' | 'overlapping_subscriptions' | 'small_leak';
+  category: string;
+  amount: number;
+  currency: string;
+  message: string;
+  items?: string[];
+}
+
+export interface SpendingIntelligence {
+  currency: string;
+  windowMonths: number;
+  monthlySeries: Array<{ month: string; total: number; byCategory: Record<string, number> }>;
+  anomalies: IntelligenceAnomaly[];
+  trends: IntelligenceTrend[];
+  waste: IntelligenceWaste[];
+  recurring: Array<{
+    description: string;
+    category: string;
+    averageAmount: number;
+    currency: string;
+    occurrences: number;
+    monthsSeen: number;
+    lastDate: string;
+  }>;
+}
+
+// --- Weekly briefing ---
+
+export interface BriefingContent {
+  title: string;
+  summary: string;
+  highlights: string[];
+  recommendations: string[];
+}
+
+export interface BriefingInsight {
+  id: string;
+  type: 'briefing';
+  content: string;
+  metadata: {
+    briefing: BriefingContent;
+    weekTotal: number;
+    previousWeekTotal: number;
+    currency: string;
+    period?: { start: string; end: string };
+  };
+  period: string;
+  createdAt: string;
+}
+
+// --- Savings goals ---
+
+export interface Goal {
+  id: string;
+  userId: string;
+  name: string;
+  targetAmount: number;
+  savedAmount: number;
+  currency: string;
+  deadline: string | null;
+  status: 'active' | 'completed' | 'archived';
+  progress: number; // 0-1
+  remaining: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ApiError {
   success: false;
   message: string;

@@ -68,6 +68,8 @@ export default function RootLayout() {
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="budget" options={{ title: 'Monthly Budget' }} />
+          <Stack.Screen name="assistant" options={{ title: 'AI Advisor' }} />
+          <Stack.Screen name="goals" options={{ title: 'Savings Goals' }} />
           <Stack.Screen name="profile-edit" options={{ title: 'Edit Profile' }} />
           <Stack.Screen name="security" options={{ title: 'Security' }} />
           <Stack.Screen name="currencies" options={{ title: 'Currency' }} />

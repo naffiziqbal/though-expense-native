@@ -52,6 +52,8 @@ export default function ProfileScreen() {
         { icon: 'phone-portrait', iconColor: '#475569', title: 'Device Settings', subtitle: 'Dark mode & appearance', href: '/device-settings' },
         { icon: 'globe', iconColor: '#4F46E5', title: 'Currencies', subtitle: `${user?.currency || 'USD'} and more`, href: '/currencies' },
         { icon: 'pie-chart', iconColor: '#0EA5A4', title: 'Monthly Budget', subtitle: 'Set limits & category budgets', href: '/budget' },
+        { icon: 'flag', iconColor: '#16A34A', title: 'Savings Goals', subtitle: 'Set targets & track progress', href: '/goals' },
+        { icon: 'sparkles', iconColor: '#D97706', title: 'AI Advisor', subtitle: 'Ask anything about your money', href: '/assistant' },
       ],
     },
     {

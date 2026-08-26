@@ -12,7 +12,7 @@ import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { api, getErrorMessage } from '../../lib/api';
-import type { CategorySummary, Insight } from '../../lib/types';
+import type { BriefingInsight, CategorySummary, Insight, SpendingIntelligence } from '../../lib/types';
 import { formatCurrency, getCategoryChartColor } from '../../lib/utils';
 import { toast } from '../../store/toastStore';
 import { useAuthStore } from '../../store/authStore';
@@ -60,6 +60,10 @@ export default function InsightsScreen() {
   const [summary, setSummary] = useState<CategorySummary | null>(null);
   const [prevSummary, setPrevSummary] = useState<CategorySummary | null>(null);
   const [recurring, setRecurring] = useState<RecurringItem[]>([]);
+  const [intelligence, setIntelligence] = useState<SpendingIntelligence | null>(null);
+  const [briefing, setBriefing] = useState<BriefingInsight | null>(null);
+  const [briefingExpanded, setBriefingExpanded] = useState(false);
+  const [isBriefingLoading, setIsBriefingLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -76,16 +80,20 @@ export default function InsightsScreen() {
       const prevDate = new Date(selYear, selMonth - 2, 1);
       const prevFilters = monthRange(prevDate.getFullYear(), prevDate.getMonth() + 1);
       try {
-        const [insightsRes, summaryRes, prevRes, recurringRes] = await Promise.all([
+        const [insightsRes, summaryRes, prevRes, recurringRes, intelligenceRes, briefingRes] = await Promise.all([
           api.getInsights({ limit: 10 }),
           api.getCategorySummary(filters),
           mode === 'month' ? api.getCategorySummary(prevFilters) : Promise.resolve(null),
           api.getRecurringExpenses().catch(() => null),
+          api.getIntelligence().catch(() => null),
+          api.getLatestBriefing().catch(() => null),
         ]);
         if (insightsRes.success) setInsights(insightsRes.data.insights);
         if (summaryRes.success) setSummary(summaryRes.data);
         setPrevSummary(prevRes?.success ? prevRes.data : null);
         if (recurringRes?.success) setRecurring(recurringRes.data.recurring);
+        if (intelligenceRes?.success) setIntelligence(intelligenceRes.data);
+        if (briefingRes?.success) setBriefing(briefingRes.data.briefing);
       } catch (error) {
         console.error('Failed to fetch insights:', error);
       } finally {
@@ -101,6 +109,26 @@ export default function InsightsScreen() {
       fetchAll();
     }, [fetchAll])
   );
+
+  const handleGenerateBriefing = async () => {
+    setIsBriefingLoading(true);
+    try {
+      const res = await api.generateBriefing();
+      if (res.success) {
+        if (res.data.briefing) {
+          setBriefing(res.data.briefing);
+          setBriefingExpanded(true);
+          toast.success('Briefing updated');
+        } else {
+          toast.info(res.message || 'Nothing to brief yet — add some expenses first.');
+        }
+      }
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Failed to generate briefing'));
+    } finally {
+      setIsBriefingLoading(false);
+    }
+  };
 
   const handleGenerateInsights = async () => {
     setIsGenerating(true);
@@ -217,6 +245,108 @@ export default function InsightsScreen() {
         value={mode}
         onChange={(v) => setMode(v as 'month' | 'all')}
       />
+
+      {/* AI advisor entry */}
+      <Pressable onPress={() => router.push('/assistant')}>
+        <Card style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.s3 }}>
+          <View style={[styles.advisorIcon, { backgroundColor: colors.accentSoft }]}>
+            <Ionicons name="sparkles" size={20} color={colors.accent} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: colors.textPrimary, fontFamily: fonts.semibold }}>Ask your AI advisor</Text>
+            <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }} numberOfLines={1}>
+              "Why did I spend so much this month?"
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </Card>
+      </Pressable>
+
+      {/* Weekly briefing */}
+      <Card>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.s2 }}>
+          <Ionicons name="newspaper-outline" size={18} color={colors.accent} />
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary, flex: 1 }]}>Weekly Briefing</Text>
+          <Button
+            title={briefing ? 'Refresh' : 'Generate'}
+            variant="ghost"
+            size="sm"
+            onPress={handleGenerateBriefing}
+            loading={isBriefingLoading}
+          />
+        </View>
+        {briefing?.metadata?.briefing ? (
+          <View style={{ gap: spacing.s2, marginTop: spacing.s2 }}>
+            <Text style={{ color: colors.textPrimary, fontFamily: fonts.semibold, fontSize: fontSize.md }}>
+              {briefing.metadata.briefing.title}
+            </Text>
+            <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, lineHeight: 20 }}>
+              {briefing.metadata.briefing.summary}
+            </Text>
+            {briefingExpanded ? (
+              <>
+                {briefing.metadata.briefing.highlights.map((h, i) => (
+                  <View key={i} style={{ flexDirection: 'row', gap: spacing.s2 }}>
+                    <Text style={{ color: colors.accent }}>•</Text>
+                    <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, flex: 1 }}>{h}</Text>
+                  </View>
+                ))}
+                {briefing.metadata.briefing.recommendations.length > 0 ? (
+                  <View style={[styles.recoBox, { backgroundColor: colors.accentSoft }]}>
+                    {briefing.metadata.briefing.recommendations.map((r, i) => (
+                      <View key={i} style={{ flexDirection: 'row', gap: spacing.s2 }}>
+                        <Ionicons name="arrow-forward-circle" size={16} color={colors.accent} style={{ marginTop: 2 }} />
+                        <Text style={{ color: colors.textPrimary, fontSize: fontSize.sm, flex: 1 }}>{r}</Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
+              </>
+            ) : null}
+            <Pressable onPress={() => setBriefingExpanded(!briefingExpanded)}>
+              <Text style={{ color: colors.accent, fontFamily: fonts.semibold, fontSize: fontSize.sm }}>
+                {briefingExpanded ? 'Show less' : 'Read full briefing'}
+              </Text>
+            </Pressable>
+          </View>
+        ) : (
+          <Text style={{ color: colors.textMuted, fontSize: fontSize.sm, marginTop: spacing.s2 }}>
+            A weekly report on your money: what you spent, what changed, and what to do next. Delivered every Monday
+            by email — or generate one now.
+          </Text>
+        )}
+      </Card>
+
+      {/* Smart alerts: anomalies, trends, waste */}
+      {intelligence &&
+      (intelligence.anomalies.length > 0 || intelligence.trends.length > 0 || intelligence.waste.length > 0) ? (
+        <Card>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.s2 }}>
+            <Ionicons name="pulse" size={18} color={colors.warning} />
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Smart Alerts</Text>
+          </View>
+          <View style={{ gap: spacing.s2, marginTop: spacing.s3 }}>
+            {intelligence.anomalies.map((a, i) => (
+              <View key={`a-${i}`} style={[styles.alertRow, { backgroundColor: colors.errorSoft }]}>
+                <Ionicons name="alert-circle" size={16} color={colors.error} style={{ marginTop: 2 }} />
+                <Text style={{ color: colors.textPrimary, fontSize: fontSize.sm, flex: 1 }}>{a.message}</Text>
+              </View>
+            ))}
+            {intelligence.trends.map((t, i) => (
+              <View key={`t-${i}`} style={[styles.alertRow, { backgroundColor: `${colors.warning}22` }]}>
+                <Ionicons name="trending-up" size={16} color={colors.warning} style={{ marginTop: 2 }} />
+                <Text style={{ color: colors.textPrimary, fontSize: fontSize.sm, flex: 1 }}>{t.message}</Text>
+              </View>
+            ))}
+            {intelligence.waste.map((w, i) => (
+              <View key={`w-${i}`} style={[styles.alertRow, { backgroundColor: colors.accentSoft }]}>
+                <Ionicons name="water" size={16} color={colors.accent} style={{ marginTop: 2 }} />
+                <Text style={{ color: colors.textPrimary, fontSize: fontSize.sm, flex: 1 }}>{w.message}</Text>
+              </View>
+            ))}
+          </View>
+        </Card>
+      ) : null}
 
       {/* Big picture donut */}
       {summary && summary.transactionCount > 0 ? (
@@ -505,6 +635,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.s2,
     paddingVertical: 2,
     overflow: 'hidden',
+  },
+  advisorIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recoBox: {
+    borderRadius: radius.md,
+    padding: spacing.s3,
+    gap: spacing.s2,
+  },
+  alertRow: {
+    flexDirection: 'row',
+    gap: spacing.s2,
+    borderRadius: radius.md,
+    padding: spacing.s3,
   },
   lockCircle: {
     width: 48,

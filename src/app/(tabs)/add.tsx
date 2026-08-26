@@ -157,17 +157,17 @@ export default function AddExpenseScreen() {
       );
       setSaveStage('saving');
 
-      for (const exp of parsed) {
-        await api.createExpense({
+      // One request for the whole batch — per-item POSTs were tripping rate limits
+      await api.createExpensesBatch(
+        parsed.map((exp) => ({
           description: exp.description,
           amount: exp.amount,
           currency: exp.currency || currency,
           category: exp.category,
           date: exp.date || selectedDate,
           rawInput: exp.rawInput,
-        });
-        setItemsToSave((prev) => prev.slice(1));
-      }
+        }))
+      );
 
       setSaveStage(null);
       setItemsToSave([]);

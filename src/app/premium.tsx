@@ -13,11 +13,13 @@ import { toast } from '../store/toastStore';
 import { useAuthStore } from '../store/authStore';
 
 const benefits = [
-  { title: 'No ads', desc: 'Clean, distraction-free experience' },
+  { title: 'Unlimited AI advisor', desc: 'Ask anything about your money — why it changed, how to save' },
+  { title: 'Weekly financial briefing', desc: 'Your week in money, with recommendations, by email' },
+  { title: 'Smart alerts', desc: 'Anomaly, trend & waste detection over 12 months of history' },
+  { title: 'Full expense history', desc: 'Search and analyze all your past transactions' },
   { title: 'Receipt scanning', desc: 'Scan receipts with camera or upload' },
-  { title: 'Full expense history', desc: 'Access all your past transactions' },
   { title: 'Export (CSV & PDF)', desc: 'Download your data anytime' },
-  { title: 'Daily & Weekly insights', desc: 'Granular AI spending analysis' },
+  { title: 'No ads', desc: 'Clean, distraction-free experience' },
 ];
 
 const PACKAGE_LABELS: Record<string, string> = {
@@ -28,6 +30,19 @@ const PACKAGE_LABELS: Record<string, string> = {
   WEEKLY: 'Weekly',
   LIFETIME: 'Lifetime',
 };
+
+const PACKAGE_SUBTITLES: Record<string, string> = {
+  MONTHLY: 'Cancel anytime',
+  ANNUAL: 'Best for committed savers',
+  LIFETIME: 'One-time payment, yours forever',
+};
+
+/** Static tiers shown while store billing is not configured. */
+const FALLBACK_PLANS = [
+  { id: 'monthly', label: 'Monthly', price: '$6.99/mo', subtitle: 'Cancel anytime' },
+  { id: 'yearly', label: 'Yearly', price: '$60/yr', subtitle: 'Save ~28% vs monthly' },
+  { id: 'lifetime', label: 'Lifetime', price: '$99', subtitle: 'One-time payment, yours forever' },
+];
 
 export default function PremiumScreen() {
   const { colors } = useTheme();
@@ -103,6 +118,16 @@ export default function PremiumScreen() {
 
   const packages = offering?.availablePackages ?? [];
   const paywallReady = billingAvailable() && packages.length > 0;
+  const selectedPkg = packages.find((p) => p.identifier === selectedId);
+  const isLifetimeSelected = selectedPkg?.packageType === 'LIFETIME';
+
+  // "Save N%" on the yearly plan, derived from the store's real prices
+  const monthlyPkg = packages.find((p) => p.packageType === 'MONTHLY');
+  const annualPkg = packages.find((p) => p.packageType === 'ANNUAL');
+  const yearlySavingsPct =
+    monthlyPkg && annualPkg && monthlyPkg.product.price > 0
+      ? Math.round((1 - annualPkg.product.price / (monthlyPkg.product.price * 12)) * 100)
+      : null;
 
   return (
     <Screen>
@@ -142,6 +167,13 @@ export default function PremiumScreen() {
           <Text style={{ color: colors.textPrimary, fontFamily: fonts.semibold }}>Choose your plan</Text>
           {packages.map((pkg: PurchasesPackage) => {
             const selected = pkg.identifier === selectedId;
+            const subtitle = PACKAGE_SUBTITLES[pkg.packageType];
+            const badge =
+              pkg.packageType === 'ANNUAL' && yearlySavingsPct && yearlySavingsPct > 0
+                ? `SAVE ${yearlySavingsPct}%`
+                : pkg.packageType === 'LIFETIME'
+                  ? 'BEST VALUE'
+                  : null;
             return (
               <Pressable
                 key={pkg.identifier}
@@ -156,34 +188,65 @@ export default function PremiumScreen() {
                   size={20}
                   color={selected ? colors.accent : colors.textMuted}
                 />
-                <Text style={{ color: colors.textPrimary, fontFamily: fonts.medium, flex: 1 }}>
-                  {PACKAGE_LABELS[pkg.packageType] ?? pkg.product.title}
-                </Text>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.s2 }}>
+                    <Text style={{ color: colors.textPrimary, fontFamily: fonts.medium }}>
+                      {PACKAGE_LABELS[pkg.packageType] ?? pkg.product.title}
+                    </Text>
+                    {badge ? (
+                      <View style={[styles.saveBadge, { backgroundColor: colors.accent }]}>
+                        <Text style={{ color: colors.onAccent, fontSize: 10, fontFamily: fonts.bold }}>{badge}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  {subtitle ? (
+                    <Text style={{ color: colors.textMuted, fontSize: fontSize.xs }}>{subtitle}</Text>
+                  ) : null}
+                </View>
                 <Text style={{ color: colors.textPrimary, fontFamily: fonts.bold }}>{pkg.product.priceString}</Text>
               </Pressable>
             );
           })}
-          <Button title="Subscribe" size="lg" onPress={handlePurchase} loading={purchasing} disabled={!selectedId} />
+          <Button
+            title={isLifetimeSelected ? 'Get Lifetime Access' : 'Subscribe'}
+            size="lg"
+            onPress={handlePurchase}
+            loading={purchasing}
+            disabled={!selectedId}
+          />
           <Pressable onPress={handleRestore} disabled={restoring} style={{ alignSelf: 'center' }}>
             <Text style={{ color: colors.accent, fontSize: fontSize.sm, fontFamily: fonts.semibold }}>
               {restoring ? 'Restoring…' : 'Restore purchases'}
             </Text>
           </Pressable>
           <Text style={{ color: colors.textMuted, fontSize: fontSize.xs, textAlign: 'center' }}>
-            Billed through Google Play. Renews automatically — cancel anytime in the Play Store.
+            {isLifetimeSelected
+              ? 'One-time payment through Google Play. No renewals, ever.'
+              : 'Billed through Google Play. Renews automatically — cancel anytime in the Play Store.'}
           </Text>
         </Card>
       ) : null}
 
       {!isPremium && !paywallReady ? (
-        <Card style={{ alignItems: 'center', gap: spacing.s2 }}>
+        <Card style={{ gap: spacing.s3 }}>
           <Text style={{ color: colors.textPrimary, fontFamily: fonts.semibold }}>
-            {loadingOffering ? 'Loading plans…' : 'Ready to upgrade?'}
+            {loadingOffering ? 'Loading plans…' : 'Plans'}
           </Text>
           {!loadingOffering ? (
-            <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, textAlign: 'center' }}>
-              Subscriptions aren't available just yet. Stay tuned!
-            </Text>
+            <>
+              {FALLBACK_PLANS.map((plan) => (
+                <View key={plan.id} style={[styles.planRow, { borderColor: colors.border }]}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: colors.textPrimary, fontFamily: fonts.medium }}>{plan.label}</Text>
+                    <Text style={{ color: colors.textMuted, fontSize: fontSize.xs }}>{plan.subtitle}</Text>
+                  </View>
+                  <Text style={{ color: colors.textPrimary, fontFamily: fonts.bold }}>{plan.price}</Text>
+                </View>
+              ))}
+              <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, textAlign: 'center' }}>
+                Purchasing isn't available on this build yet. Stay tuned!
+              </Text>
+            </>
           ) : null}
         </Card>
       ) : null}
@@ -208,5 +271,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.s3,
     paddingVertical: spacing.s3,
     minHeight: 52,
+  },
+  saveBadge: {
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.s2,
+    paddingVertical: 2,
   },
 });

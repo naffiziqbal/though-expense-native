@@ -3,7 +3,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { useFocusEffect, useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CategoryIconBubble } from '../../components/CategoryIconBubble';
 import { BottomSheet } from '../../components/ui/BottomSheet';
@@ -19,7 +19,7 @@ import { SelectSheet } from '../../components/ui/SelectSheet';
 import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { api, getErrorMessage } from '../../lib/api';
-import type { Expense } from '../../lib/types';
+import type { Expense, SearchResultExpense } from '../../lib/types';
 import { cleanExpenseDescription, formatCurrency, formatDate } from '../../lib/utils';
 import { toast } from '../../store/toastStore';
 import { useAuthStore } from '../../store/authStore';
@@ -60,6 +60,13 @@ export default function ExpensesScreen() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [categories, setCategories] = useState<string[]>([]);
+
+  // Natural-language search
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchResultExpense[] | null>(null);
+  const [searchTotalAmount, setSearchTotalAmount] = useState(0);
+  const [searchCurrency, setSearchCurrency] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
 
   // Filters
   const [filters, setFilters] = useState({ category: '', startDate: '', endDate: '' });
@@ -211,6 +218,31 @@ export default function ExpensesScreen() {
     }
   };
 
+  const runSearch = async () => {
+    const q = searchQuery.trim();
+    if (!q) return;
+    setIsSearching(true);
+    try {
+      const res = await api.searchExpenses(q);
+      if (res.success) {
+        setSearchResults(res.data.expenses);
+        setSearchTotalAmount(res.data.totalAmount);
+        setSearchCurrency(res.data.currency);
+      }
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Search failed'));
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const clearSearch = () => {
+    setSearchQuery('');
+    setSearchResults(null);
+  };
+
+  const searchActive = searchResults !== null;
+
   const activeFiltersCount = [filters.category, filters.startDate, filters.endDate].filter(Boolean).length;
 
   return (
@@ -258,8 +290,83 @@ export default function ExpensesScreen() {
           </View>
         </View>
 
+        {/* Natural-language search */}
+        <View style={[styles.searchBar, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
+          <Ionicons name="search" size={18} color={colors.textMuted} />
+          <TextInput
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onSubmitEditing={runSearch}
+            returnKeyType="search"
+            placeholder='Search anything — "coffee last month", "over 500"'
+            placeholderTextColor={colors.textMuted}
+            style={[styles.searchInput, { color: colors.textPrimary }]}
+          />
+          {isSearching ? (
+            <ActivityIndicator size="small" color={colors.accent} />
+          ) : searchActive || searchQuery ? (
+            <Pressable onPress={clearSearch} hitSlop={8} accessibilityLabel="Clear search">
+              <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+            </Pressable>
+          ) : null}
+        </View>
+
+        {/* Search results summary */}
+        {searchActive ? (
+          <View style={[styles.freeBanner, { backgroundColor: colors.accentSoft }]}>
+            <Text style={{ color: colors.accent, fontSize: fontSize.xs, fontFamily: fonts.medium }}>
+              {searchResults!.length} result{searchResults!.length !== 1 ? 's' : ''}
+              {searchResults!.length > 0 ? ` · ${formatCurrency(searchTotalAmount, searchCurrency)} total` : ''} — tap ✕ to
+              go back
+            </Text>
+          </View>
+        ) : null}
+
         {/* List */}
-        {isLoading ? (
+        {searchActive ? (
+          searchResults!.length === 0 ? (
+            <EmptyState
+              icon="search-outline"
+              title="Nothing matched"
+              message="Try different words — I search meanings, not just exact text."
+            />
+          ) : (
+            <Card padded={false} style={{ flex: 1 }}>
+              <FlatList
+                data={searchResults!}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item, index }) => (
+                  <Pressable
+                    onPress={() => handleEdit(item as unknown as Expense)}
+                    style={[
+                      styles.txRow,
+                      index < searchResults!.length - 1 && {
+                        borderBottomWidth: StyleSheet.hairlineWidth,
+                        borderBottomColor: colors.border,
+                      },
+                    ]}
+                  >
+                    <CategoryIconBubble category={item.category} size={44} />
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={{ color: colors.textPrimary, fontFamily: fonts.bold }} numberOfLines={1}>
+                        {cleanExpenseDescription(item.description)}
+                      </Text>
+                      <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, marginTop: 2 }}>
+                        {formatDate(item.date)}
+                      </Text>
+                    </View>
+                    <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                      <Text style={{ color: colors.textPrimary, fontFamily: fonts.bold }}>
+                        -{formatCurrency(item.amount, item.currency)}
+                      </Text>
+                      <CategoryBadge category={item.category} />
+                    </View>
+                  </Pressable>
+                )}
+              />
+            </Card>
+          )
+        ) : isLoading ? (
           <View style={styles.center}>
             <ActivityIndicator size="large" color={colors.accent} />
           </View>
@@ -307,7 +414,7 @@ export default function ExpensesScreen() {
         )}
 
         {/* Pagination */}
-        {!isLoading && total > 0 ? (
+        {!searchActive && !isLoading && total > 0 ? (
           <View style={styles.pagination}>
             <Pressable
               onPress={() => setPage((p) => Math.max(1, p - 1))}
@@ -472,6 +579,19 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: spacing.s4,
     gap: spacing.s3,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.s2,
+    borderWidth: 1,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.s3,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: spacing.s2,
+    fontSize: fontSize.sm,
   },
   freeBanner: {
     borderRadius: radius.md,
