@@ -10,7 +10,6 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ToastHost } from '../components/ui/ToastHost';
 import { fonts } from '../constants/theme';
@@ -52,7 +51,6 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <KeyboardProvider>
       <SafeAreaProvider>
         <StatusBar style={isDark ? 'light' : 'dark'} />
         <Stack
@@ -78,7 +76,6 @@ export default function RootLayout() {
         </Stack>
         <ToastHost />
       </SafeAreaProvider>
-      </KeyboardProvider>
     </GestureHandlerRootView>
   );
 }

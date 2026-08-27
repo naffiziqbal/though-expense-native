@@ -3,7 +3,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
+import { KeyboardSpacer } from '../../components/ui/KeyboardSpacer';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CategoryIconBubble } from '../../components/CategoryIconBubble';
 import { Button } from '../../components/ui/Button';
@@ -202,7 +202,7 @@ export default function AddExpenseScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bgPrimary }}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+      <View style={{ flex: 1 }}>
         <View style={[styles.container, { paddingTop: insets.top + spacing.s3 }]}>
           {/* Header */}
           <View>
@@ -354,7 +354,8 @@ export default function AddExpenseScreen() {
             ) : null}
           </View>
         </View>
-      </KeyboardAvoidingView>
+        <KeyboardSpacer />
+      </View>
     </View>
   );
 }

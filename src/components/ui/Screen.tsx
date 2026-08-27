@@ -1,9 +1,24 @@
-import React from 'react';
-import { RefreshControl, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
-import { KeyboardAvoidingView, KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+import React, { useEffect, useRef } from 'react';
+import {
+  Animated,
+  Keyboard,
+  Platform,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  View,
+  useWindowDimensions,
+  type KeyboardEvent,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
+import { useKeyboardLift } from './KeyboardSpacer';
 
 interface ScreenProps {
   children: React.ReactNode;
@@ -27,19 +42,53 @@ export function Screen({
 }: ScreenProps) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const paddingTop = safeTop ? insets.top + spacing.s3 : spacing.s4;
 
+  const lift = useKeyboardLift(insets.bottom);
+  const scrollRef = useRef<ScrollView>(null);
+  const scrollOffset = useRef(0);
+
+  // Scroll views only: when the keyboard opens, make sure the focused input
+  // isn't left underneath it (the spacer adds room; this moves the viewport).
+  useEffect(() => {
+    if (!scroll) return;
+    const sub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e: KeyboardEvent) => {
+        const input = TextInput.State.currentlyFocusedInput?.();
+        if (!input || !scrollRef.current) return;
+        // Wait a frame so the spacer height applies before measuring.
+        requestAnimationFrame(() => {
+          input.measureInWindow((_x, y, _w, h) => {
+            const keyboardTop = windowHeight - (e.endCoordinates?.height ?? 0);
+            const overlap = y + h + spacing.s6 - keyboardTop;
+            if (overlap > 0) {
+              scrollRef.current?.scrollTo({ y: scrollOffset.current + overlap, animated: true });
+            }
+          });
+        });
+      }
+    );
+    return () => sub.remove();
+  }, [scroll, windowHeight]);
+
+  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    scrollOffset.current = e.nativeEvent.contentOffset.y;
+  };
+
   const inner = scroll ? (
-    // Keyboard-aware: the focused input always stays above the keyboard.
-    <KeyboardAwareScrollView
+    <ScrollView
+      ref={scrollRef}
       style={{ flex: 1 }}
-      bottomOffset={spacing.s6}
       contentContainerStyle={[
         styles.content,
         { paddingTop, paddingBottom: spacing.s8 + insets.bottom },
         contentStyle,
       ]}
       keyboardShouldPersistTaps="handled"
+      onScroll={onScroll}
+      scrollEventThrottle={16}
       refreshControl={
         onRefresh ? (
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />
@@ -47,11 +96,15 @@ export function Screen({
       }
     >
       {children}
-    </KeyboardAwareScrollView>
+      {/* Keyboard spacer: grows to the keyboard height so everything stays reachable */}
+      <Animated.View style={{ height: lift }} />
+    </ScrollView>
   ) : (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding" keyboardVerticalOffset={insets.top}>
+    <View style={{ flex: 1 }}>
       <View style={[styles.content, { flex: 1, paddingTop }, contentStyle]}>{children}</View>
-    </KeyboardAvoidingView>
+      {/* Keyboard spacer: pushes pinned bottom content (e.g. chat input) above the keyboard */}
+      <Animated.View style={{ height: lift }} />
+    </View>
   );
 
   return <View style={{ flex: 1, backgroundColor: colors.bgPrimary }}>{inner}</View>;

@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useRef, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import axios from 'axios';
 import { Button } from '../components/ui/Button';
 import { Screen } from '../components/ui/Screen';
@@ -38,6 +39,7 @@ function extractSavingsTarget(question: string): number | null {
 
 export default function AssistantScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useAuthStore();
   const isPremium = user?.isPremium ?? false;
@@ -244,7 +246,16 @@ export default function AssistantScreen() {
         </Text>
       ) : null}
 
-      <View style={[styles.inputRow, { backgroundColor: colors.bgCard, borderTopColor: colors.border }]}>
+      <View
+        style={[
+          styles.inputRow,
+          {
+            backgroundColor: colors.bgCard,
+            borderTopColor: colors.border,
+            paddingBottom: Math.max(insets.bottom, spacing.s3),
+          },
+        ]}
+      >
         <TextInput
           value={input}
           onChangeText={setInput}
