@@ -19,7 +19,6 @@ const benefits = [
   { title: 'Full expense history', desc: 'Search and analyze all your past transactions' },
   { title: 'Receipt scanning', desc: 'Scan receipts with camera or upload' },
   { title: 'Export (CSV & PDF)', desc: 'Download your data anytime' },
-  { title: 'No ads', desc: 'Clean, distraction-free experience' },
 ];
 
 const PACKAGE_LABELS: Record<string, string> = {

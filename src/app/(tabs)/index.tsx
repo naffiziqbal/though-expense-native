@@ -333,13 +333,6 @@ export default function HomeScreen() {
         </Card>
       ) : null}
 
-      {/* Ad placeholder (free users) */}
-      {!isPremium && !loading ? (
-        <Card style={{ alignItems: 'center', borderStyle: 'dashed' }}>
-          <Text style={{ color: colors.textMuted, fontSize: fontSize.xs }}>Ad · Upgrade to Premium to remove ads</Text>
-        </Card>
-      ) : null}
-
       {/* Notifications sheet */}
       <BottomSheet visible={notificationOpen} onClose={() => setNotificationOpen(false)} title="Notifications">
         <View style={{ gap: spacing.s2 }}>

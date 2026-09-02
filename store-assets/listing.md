@@ -57,7 +57,6 @@ PREMIUM ($6.99/month, $60/year, or $99 once for lifetime)
 • Receipt scanning — snap a photo, AI extracts every line item
 • Full history (free accounts see the last 3 months)
 • Export to CSV or PDF
-• No ads
 
 YOUR DATA, YOUR CALL
 • Password reset by email code
