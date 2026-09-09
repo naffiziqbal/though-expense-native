@@ -5,6 +5,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { api, setUnauthorizedHandler } from '../lib/api';
 import { resetBilling } from '../lib/billing';
 import type { User } from '../lib/types';
+import { usePendingStore } from './pendingStore';
 
 interface AuthState {
   user: User | null;
@@ -49,6 +50,7 @@ export const useAuthStore = create<AuthState>()(
       logout: async () => {
         await api.logout();
         await resetBilling();
+        usePendingStore.getState().clear();
         set({ user: null, isAuthenticated: false, error: null });
       },
 

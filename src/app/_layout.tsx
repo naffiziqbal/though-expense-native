@@ -15,8 +15,10 @@ import { ToastHost } from '../components/ui/ToastHost';
 import { fonts } from '../constants/theme';
 import { api } from '../lib/api';
 import { configureBilling, identifyBilling } from '../lib/billing';
+import { usePendingParseSync } from '../hooks/usePendingParseSync';
 import { useTheme } from '../hooks/useTheme';
 import { useAuthStore } from '../store/authStore';
+import { usePendingStore } from '../store/pendingStore';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -24,6 +26,7 @@ export default function RootLayout() {
   const { colors, isDark } = useTheme();
   const checkAuth = useAuthStore((s) => s.checkAuth);
   const userId = useAuthStore((s) => s.user?.id);
+  usePendingParseSync();
   const [fontsLoaded] = useFonts({
     InstrumentSans_400Regular,
     InstrumentSans_500Medium,

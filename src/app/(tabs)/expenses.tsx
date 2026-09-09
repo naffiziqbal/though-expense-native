@@ -23,6 +23,7 @@ import type { Expense, SearchResultExpense } from '../../lib/types';
 import { cleanExpenseDescription, formatCurrency, formatDate } from '../../lib/utils';
 import { toast } from '../../store/toastStore';
 import { useAuthStore } from '../../store/authStore';
+import { usePendingStore } from '../../store/pendingStore';
 
 const PAGE_SIZE = 10;
 
@@ -53,6 +54,7 @@ export default function ExpensesScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
+  const pending = usePendingStore((s) => s.items);
   const isPremium = user?.isPremium ?? false;
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -245,6 +247,28 @@ export default function ExpensesScreen() {
 
   const activeFiltersCount = [filters.category, filters.startDate, filters.endDate].filter(Boolean).length;
 
+  const pendingExpenses: Expense[] = pending
+    .filter((p) => {
+      if (filters.category && p.category !== filters.category) return false;
+      if (filters.startDate && p.date.slice(0, 10) < filters.startDate) return false;
+      if (filters.endDate && p.date.slice(0, 10) > filters.endDate) return false;
+      return true;
+    })
+    .map((p) => ({
+      id: `pending:${p.localId}`,
+      userId: user?.id || '',
+      description: p.description,
+      amount: p.amount,
+      currency: p.currency,
+      category: p.category,
+      confidence: 0.6,
+      rawInput: p.rawInput,
+      date: p.date,
+      createdAt: p.createdAt,
+      updatedAt: p.createdAt,
+    }));
+  const displayExpenses = page === 1 ? [...pendingExpenses, ...expenses] : expenses;
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.bgPrimary, paddingTop: insets.top + spacing.s3 }}>
       <View style={styles.container}>
@@ -370,7 +394,7 @@ export default function ExpensesScreen() {
           <View style={styles.center}>
             <ActivityIndicator size="large" color={colors.accent} />
           </View>
-        ) : expenses.length === 0 ? (
+        ) : displayExpenses.length === 0 ? (
           <EmptyState
             icon="receipt-outline"
             title="No expenses found"
@@ -379,14 +403,17 @@ export default function ExpensesScreen() {
         ) : (
           <Card padded={false} style={{ flex: 1 }}>
             <FlatList
-              data={expenses}
+              data={displayExpenses}
               keyExtractor={(item) => item.id}
               renderItem={({ item, index }) => (
                 <Pressable
-                  onPress={() => handleEdit(item)}
+                  onPress={() => {
+                    if (item.id.startsWith('pending:')) return;
+                    handleEdit(item);
+                  }}
                   style={[
                     styles.txRow,
-                    index < expenses.length - 1 && {
+                    index < displayExpenses.length - 1 && {
                       borderBottomWidth: StyleSheet.hairlineWidth,
                       borderBottomColor: colors.border,
                     },

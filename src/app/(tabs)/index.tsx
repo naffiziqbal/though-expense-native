@@ -14,9 +14,11 @@ import { Screen } from '../../components/ui/Screen';
 import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { api } from '../../lib/api';
+import { addPendingToTotals } from '../../lib/pendingExpenses';
 import type { BudgetSummary, CategorySummary, Expense, Goal, Insight } from '../../lib/types';
 import { formatCurrency, formatDate } from '../../lib/utils';
 import { useAuthStore } from '../../store/authStore';
+import { usePendingStore } from '../../store/pendingStore';
 
 function getCurrentMonthRange() {
   const now = new Date();
@@ -38,6 +40,7 @@ export default function HomeScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const { user } = useAuthStore();
+  const pending = usePendingStore((s) => s.items);
   const isPremium = user?.isPremium ?? false;
 
   const [summary, setSummary] = useState<CategorySummary | null>(null);
@@ -87,25 +90,77 @@ export default function HomeScreen() {
     }, [fetchData])
   );
 
-  const currency = summary?.currency || user?.currency || 'USD';
-  const budgetPct = budget ? budget.percentage : 0;
-  const topCategory = summary?.topCategories?.[0];
-  const topCategoryAmount = topCategory ? (summary?.byCategory?.[topCategory] ?? 0) : 0;
+  const { startDate, endDate } = getCurrentMonthRange();
+  const merged = addPendingToTotals(
+    summary?.totalSpent ?? 0,
+    summary?.byCategory ?? {},
+    pending,
+    startDate,
+    endDate
+  );
+  const displaySummary: CategorySummary | null = summary
+    ? {
+        ...summary,
+        totalSpent: merged.totalSpent,
+        byCategory: merged.byCategory,
+        transactionCount: (summary.transactionCount || 0) + pending.filter((p) => p.date.slice(0, 10) >= startDate && p.date.slice(0, 10) <= endDate).length,
+      }
+    : pending.length
+      ? {
+          totalSpent: merged.totalSpent,
+          currency: user?.currency || 'USD',
+          byCategory: merged.byCategory,
+          percentages: {},
+          topCategories: Object.keys(merged.byCategory),
+          transactionCount: pending.length,
+        }
+      : null;
+
+  const pendingRecent: Expense[] = pending.map((p) => ({
+    id: `pending:${p.localId}`,
+    userId: user?.id || '',
+    description: p.description,
+    amount: p.amount,
+    currency: p.currency,
+    category: p.category,
+    confidence: 0.6,
+    rawInput: p.rawInput,
+    date: p.date,
+    createdAt: p.createdAt,
+    updatedAt: p.createdAt,
+  }));
+  const displayRecent = [...pendingRecent, ...recentExpenses].slice(0, 5);
+
+  const displayBudget = budget
+    ? {
+        ...budget,
+        total_spent: budget.total_spent + pending.filter((p) => p.date.slice(0, 10) >= startDate && p.date.slice(0, 10) <= endDate).reduce((s, p) => s + p.amount, 0),
+      }
+    : budget;
+  if (displayBudget) {
+    displayBudget.remaining = displayBudget.total_limit - displayBudget.total_spent;
+    displayBudget.percentage = displayBudget.total_limit > 0 ? Math.round((displayBudget.total_spent / displayBudget.total_limit) * 100) : 0;
+  }
+
+  const currency = displaySummary?.currency || user?.currency || 'USD';
+  const budgetPct = displayBudget ? displayBudget.percentage : 0;
+  const topCategory = Object.entries(merged.byCategory).sort((a, b) => b[1] - a[1])[0]?.[0];
+  const topCategoryAmount = topCategory ? merged.byCategory[topCategory] : 0;
 
   const notifications: NotificationItem[] = [];
-  if (budget && budget.percentage >= 100) {
+  if (displayBudget && displayBudget.percentage >= 100) {
     notifications.push({
       id: `budget-exceeded-${budget.year}-${budget.month}`,
       type: 'budget-exceeded',
       content: 'You have exceeded your monthly budget',
-      meta: `${formatCurrency(budget.total_spent, currency)} of ${formatCurrency(budget.total_limit, currency)} (${budget.percentage}%)`,
+      meta: `${formatCurrency(displayBudget.total_spent, currency)} of ${formatCurrency(displayBudget.total_limit, currency)} (${displayBudget.percentage}%)`,
     });
-  } else if (budget && budget.percentage >= 90) {
+  } else if (displayBudget && displayBudget.percentage >= 90) {
     notifications.push({
       id: `budget-warning-${budget.year}-${budget.month}`,
       type: 'budget-warning',
       content: 'You are about to exceed your monthly budget',
-      meta: `${formatCurrency(budget.total_spent, currency)} of ${formatCurrency(budget.total_limit, currency)} (${budget.percentage}%)`,
+      meta: `${formatCurrency(displayBudget.total_spent, currency)} of ${formatCurrency(displayBudget.total_limit, currency)} (${displayBudget.percentage}%)`,
     });
   }
   insights.forEach((insight) => {
@@ -150,21 +205,21 @@ export default function HomeScreen() {
       </View>
 
       {/* Budget warning banner */}
-      {budget && budget.percentage >= 90 ? (
+      {displayBudget && displayBudget.percentage >= 90 ? (
         <Card
           style={{
-            backgroundColor: budget.percentage >= 100 ? colors.errorSoft : 'rgba(217, 119, 6, 0.12)',
-            borderColor: budget.percentage >= 100 ? colors.error : colors.warning,
+            backgroundColor: displayBudget.percentage >= 100 ? colors.errorSoft : 'rgba(217, 119, 6, 0.12)',
+            borderColor: displayBudget.percentage >= 100 ? colors.error : colors.warning,
           }}
         >
           <Text style={{ color: colors.textPrimary, fontFamily: fonts.semibold, fontSize: fontSize.sm }}>
-            {budget.percentage >= 100
+            {displayBudget.percentage >= 100
               ? 'You have exceeded your monthly budget'
               : 'You are about to exceed your monthly budget'}
           </Text>
           <Text style={{ color: colors.textSecondary, fontSize: fontSize.xs, marginTop: 4 }}>
-            {formatCurrency(budget.total_spent, currency)} of {formatCurrency(budget.total_limit, currency)} (
-            {budget.percentage}%)
+            {formatCurrency(displayBudget.total_spent, currency)} of {formatCurrency(displayBudget.total_limit, currency)} (
+            {displayBudget.percentage}%)
           </Text>
         </Card>
       ) : null}
@@ -175,12 +230,12 @@ export default function HomeScreen() {
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={[styles.heroLabel, { color: colors.textMuted }]}>TOTAL SPENT</Text>
             <Text style={[styles.heroAmount, { color: colors.textPrimary }]} numberOfLines={1} adjustsFontSizeToFit>
-              {loading ? '…' : formatCurrency(summary?.totalSpent ?? 0, currency)}
+              {loading ? '…' : formatCurrency(displaySummary?.totalSpent ?? 0, currency)}
             </Text>
             <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, marginTop: spacing.s2 }}>
-              {summary?.transactionCount ?? 0} transactions
+              {displaySummary?.transactionCount ?? 0} transactions
             </Text>
-            {budget ? (
+            {displayBudget ? (
               <Text
                 style={{
                   color: colors.accent,
@@ -195,7 +250,7 @@ export default function HomeScreen() {
                   overflow: 'hidden',
                 }}
               >
-                {formatCurrency(Math.max(0, budget.remaining), currency)} safe to spend
+                {formatCurrency(Math.max(0, displayBudget.remaining), currency)} safe to spend
               </Text>
             ) : null}
           </View>
@@ -218,7 +273,7 @@ export default function HomeScreen() {
           <Card style={styles.gridCard}>
             <Text style={[styles.heroLabel, { color: colors.textMuted }]}>SAFE TO SPEND</Text>
             <Text style={[styles.gridAmount, { color: colors.textPrimary }]} numberOfLines={1} adjustsFontSizeToFit>
-              {budget ? formatCurrency(Math.max(0, budget.remaining), currency) : '—'}
+              {displayBudget ? formatCurrency(Math.max(0, displayBudget.remaining), currency) : '—'}
             </Text>
             <View style={{ gap: spacing.s1 }}>
               <ProgressBar percentage={budgetPct} />
@@ -286,7 +341,7 @@ export default function HomeScreen() {
       ) : null}
 
       {/* Zone D: Recent transactions */}
-      {recentExpenses.length > 0 ? (
+      {displayRecent.length > 0 ? (
         <View style={{ gap: spacing.s3 }}>
           <View style={styles.sectionRow}>
             <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Recent Transactions</Text>
@@ -295,13 +350,13 @@ export default function HomeScreen() {
             </Pressable>
           </View>
           <Card padded={false}>
-            {recentExpenses.map((expense, i) => (
+            {displayRecent.map((expense, i) => (
               <Pressable
                 key={expense.id}
                 onPress={() => router.push('/(tabs)/expenses')}
                 style={[
                   styles.txRow,
-                  i < recentExpenses.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+                  i < displayRecent.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
                 ]}
               >
                 <CategoryIconBubble category={expense.category} size={44} />
@@ -321,7 +376,7 @@ export default function HomeScreen() {
       ) : null}
 
       {/* Empty state */}
-      {!loading && (summary?.transactionCount ?? 0) === 0 ? (
+      {!loading && (displaySummary?.transactionCount ?? 0) === 0 ? (
         <Card>
           <EmptyState
             icon="create-outline"
