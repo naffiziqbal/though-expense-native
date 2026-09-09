@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing } from '../../constants/theme';
+import { useSafeTop } from '../../hooks/useSafeTop';
 import { useTheme } from '../../hooks/useTheme';
 import { useKeyboardLift } from './KeyboardSpacer';
 
@@ -43,7 +44,8 @@ export function Screen({
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
-  const paddingTop = safeTop ? insets.top + spacing.s3 : spacing.s4;
+  const topInset = useSafeTop();
+  const paddingTop = safeTop ? topInset + spacing.s3 : spacing.s4;
 
   const lift = useKeyboardLift(insets.bottom);
   const scrollRef = useRef<ScrollView>(null);

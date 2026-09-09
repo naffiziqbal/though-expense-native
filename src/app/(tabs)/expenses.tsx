@@ -4,7 +4,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeTop } from '../../hooks/useSafeTop';
 import { CategoryIconBubble } from '../../components/CategoryIconBubble';
 import { BottomSheet } from '../../components/ui/BottomSheet';
 import { Button } from '../../components/ui/Button';
@@ -52,7 +52,7 @@ function base64FromArrayBuffer(buffer: ArrayBuffer): string {
 export default function ExpensesScreen() {
   const { colors } = useTheme();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const topInset = useSafeTop();
   const { user } = useAuthStore();
   const pending = usePendingStore((s) => s.items);
   const isPremium = user?.isPremium ?? false;
@@ -270,7 +270,7 @@ export default function ExpensesScreen() {
   const displayExpenses = page === 1 ? [...pendingExpenses, ...expenses] : expenses;
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bgPrimary, paddingTop: insets.top + spacing.s3 }}>
+    <View style={{ flex: 1, backgroundColor: colors.bgPrimary, paddingTop: topInset + spacing.s3 }}>
       <View style={styles.container}>
         {/* Free-tier banner */}
         {!isPremium ? (

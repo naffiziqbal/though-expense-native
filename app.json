@@ -7,11 +7,16 @@
     "icon": "./assets/images/icon.png",
     "scheme": "thoughtexpense",
     "userInterfaceStyle": "automatic",
+    "androidStatusBar": {
+      "translucent": true,
+      "backgroundColor": "#00000000"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.nafiziqbal.thoughtexpense"
     },
     "android": {
+      "edgeToEdgeEnabled": true,
       "package": "com.nafiziqbal.thoughtexpense",
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {

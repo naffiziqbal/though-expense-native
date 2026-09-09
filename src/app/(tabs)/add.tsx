@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { KeyboardSpacer } from '../../components/ui/KeyboardSpacer';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeTop } from '../../hooks/useSafeTop';
 import { CategoryIconBubble } from '../../components/CategoryIconBubble';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
@@ -35,7 +35,7 @@ type SaveStage = 'text' | 'amounts' | 'categorizing' | 'saving' | null;
 export default function AddExpenseScreen() {
   const { colors } = useTheme();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const topInset = useSafeTop();
   const { user } = useAuthStore();
   const currency = user?.currency || 'USD';
   const isPremium = user?.isPremium ?? false;
@@ -195,7 +195,7 @@ export default function AddExpenseScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.bgPrimary }}>
       <View style={{ flex: 1 }}>
-        <View style={[styles.container, { paddingTop: insets.top + spacing.s3 }]}>
+        <View style={[styles.container, { paddingTop: topInset + spacing.s3 }]}>
           {/* Header */}
           <View>
             <Text style={[styles.title, { color: colors.textPrimary }]}>Quick Log</Text>

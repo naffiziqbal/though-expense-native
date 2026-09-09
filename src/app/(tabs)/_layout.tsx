@@ -2,12 +2,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { Redirect, Tabs } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { radius } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { useAuthStore } from '../../store/authStore';
 
 export default function TabsLayout() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { isAuthenticated, isLoading } = useAuthStore();
 
   if (!isLoading && !isAuthenticated) {
@@ -24,8 +26,9 @@ export default function TabsLayout() {
         tabBarStyle: {
           backgroundColor: colors.bgCard,
           borderTopColor: colors.border,
-          height: 72,
+          height: 72 + insets.bottom,
           paddingTop: 8,
+          paddingBottom: Math.max(insets.bottom, 8),
         },
       }}
     >
