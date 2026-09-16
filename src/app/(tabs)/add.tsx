@@ -7,6 +7,8 @@ import { KeyboardSpacer } from '../../components/ui/KeyboardSpacer';
 import { useClipboardCapture } from '../../hooks/useClipboardCapture';
 import { isCurrentlyOffline } from '../../hooks/useOutboxSync';
 import { useSafeTop } from '../../hooks/useSafeTop';
+import { useTourTarget } from '../../hooks/useTourTarget';
+import { TOUR_TARGETS } from '../../lib/tourSteps';
 import { CategoryIconBubble } from '../../components/CategoryIconBubble';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
@@ -52,6 +54,8 @@ export default function AddExpenseScreen() {
   const [itemsToSave, setItemsToSave] = useState<ReceiptItem[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputTarget = useTourTarget(TOUR_TARGETS.addInput);
+  const saveTarget = useTourTarget(TOUR_TARGETS.addSave);
 
   const updatePreview = useCallback((text: string) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -254,7 +258,7 @@ export default function AddExpenseScreen() {
           </View>
 
           {/* Smart input card */}
-          <Card padded={false}>
+          <Card {...inputTarget} padded={false}>
             <TextInput
               value={rawInput}
               onChangeText={handleInputChange}
@@ -402,7 +406,7 @@ export default function AddExpenseScreen() {
           </ScrollView>
 
           {/* Save button */}
-          <View style={{ paddingBottom: spacing.s3 }}>
+          <View {...saveTarget} style={{ paddingBottom: spacing.s3 }}>
             <Button
               title={stageLabel || 'Save All Items'}
               onPress={handleSave}

@@ -11,6 +11,7 @@ import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { getImageUrl } from '../../lib/utils';
 import { useAuthStore } from '../../store/authStore';
+import { useOnboardingStore } from '../../store/onboardingStore';
 
 interface MenuItem {
   icon: keyof typeof Ionicons.glyphMap;
@@ -19,12 +20,14 @@ interface MenuItem {
   subtitle: string;
   href?: Href;
   comingSoon?: boolean;
+  onPress?: () => void;
 }
 
 export default function ProfileScreen() {
   const { colors, isDark } = useTheme();
   const router = useRouter();
   const { user, logout } = useAuthStore();
+  const startTour = useOnboardingStore((s) => s.start);
   const isPremium = user?.isPremium ?? false;
   const [comingSoon, setComingSoon] = useState<string | null>(null);
   const [logoutConfirm, setLogoutConfirm] = useState(false);
@@ -56,6 +59,14 @@ export default function ProfileScreen() {
         { icon: 'pie-chart', iconColor: '#0EA5A4', title: 'Monthly Budget', subtitle: 'Set limits & category budgets', href: '/budget' },
         { icon: 'flag', iconColor: '#16A34A', title: 'Savings Goals', subtitle: 'Set targets & track progress', href: '/goals' },
         { icon: 'sparkles', iconColor: '#D97706', title: 'AI Advisor', subtitle: 'Ask anything about your money', href: '/assistant' },
+        {
+          icon: 'help-buoy',
+          iconColor: '#0D9488',
+          title: 'Replay the tour',
+          subtitle: 'Let Penny walk you through it again',
+          // The overlay navigates to each step's screen itself.
+          onPress: startTour,
+        },
       ],
     },
     {
@@ -110,7 +121,11 @@ export default function ProfileScreen() {
             {section.items.map((item, i) => (
               <Pressable
                 key={item.title}
-                onPress={() => (item.comingSoon ? setComingSoon(item.title) : item.href && router.push(item.href))}
+                onPress={() => {
+                  if (item.comingSoon) setComingSoon(item.title);
+                  else if (item.onPress) item.onPress();
+                  else if (item.href) router.push(item.href);
+                }}
                 style={[
                   styles.menuRow,
                   i < section.items.length - 1 && {

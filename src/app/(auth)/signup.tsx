@@ -66,9 +66,11 @@ export default function SignupScreen() {
       });
       if (response.success) {
         setUser(response.data.user);
+        // Flags the account for the guided tour, which starts itself once the
+        // tab shell mounts (see app/(tabs)/_layout.tsx).
         markPending(response.data.user.id);
         toast.success('Account created successfully!');
-        router.replace('/onboarding');
+        router.replace('/(tabs)');
       }
     } catch (error) {
       toast.error(getErrorMessage(error, 'Failed to create account. Please try again.'));

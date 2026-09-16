@@ -15,6 +15,8 @@ import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { api } from '../../lib/api';
 import { usePendingExpenses } from '../../hooks/usePendingExpenses';
+import { useTourTarget } from '../../hooks/useTourTarget';
+import { TOUR_TARGETS } from '../../lib/tourSteps';
 import { addPendingToTotals } from '../../lib/pendingExpenses';
 import type { BudgetSummary, CategorySummary, Expense, Goal, Insight } from '../../lib/types';
 import { formatCurrency, formatDate } from '../../lib/utils';
@@ -42,6 +44,8 @@ export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
   const pending = usePendingExpenses();
+  const totalTarget = useTourTarget(TOUR_TARGETS.homeTotal);
+  const budgetTarget = useTourTarget(TOUR_TARGETS.homeBudget);
   const isPremium = user?.isPremium ?? false;
 
   const [summary, setSummary] = useState<CategorySummary | null>(null);
@@ -226,7 +230,7 @@ export default function HomeScreen() {
       ) : null}
 
       {/* Zone B: Hero card */}
-      <Card>
+      <Card {...totalTarget}>
         <View style={styles.heroRow}>
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={[styles.heroLabel, { color: colors.textMuted }]}>TOTAL SPENT</Text>
@@ -271,7 +275,7 @@ export default function HomeScreen() {
       {/* Zone C: Context grid */}
       <View style={styles.grid}>
         <Pressable style={{ flex: 1 }} onPress={() => router.push('/budget')}>
-          <Card style={styles.gridCard}>
+          <Card {...budgetTarget} style={styles.gridCard}>
             <Text style={[styles.heroLabel, { color: colors.textMuted }]}>SAFE TO SPEND</Text>
             <Text style={[styles.gridAmount, { color: colors.textPrimary }]} numberOfLines={1} adjustsFontSizeToFit>
               {displayBudget ? formatCurrency(Math.max(0, displayBudget.remaining), currency) : '—'}

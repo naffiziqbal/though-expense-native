@@ -11,6 +11,7 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { TourOverlay } from '../components/tour/TourOverlay';
 import { OfflineBanner } from '../components/ui/OfflineBanner';
 import { ToastHost } from '../components/ui/ToastHost';
 import { fonts } from '../constants/theme';
@@ -77,7 +78,6 @@ function RootLayout() {
         >
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="budget" options={{ title: 'Monthly Budget' }} />
           <Stack.Screen name="assistant" options={{ title: 'AI Advisor' }} />
@@ -91,6 +91,8 @@ function RootLayout() {
           <Stack.Screen name="device-settings" options={{ title: 'Device Settings' }} />
         </Stack>
         <OfflineBanner visible={isOffline} queuedCount={queuedCount} />
+        {/* Above the Stack so the tour can dim the tab bar it points at. */}
+        <TourOverlay />
         <ToastHost />
       </SafeAreaProvider>
     </GestureHandlerRootView>
