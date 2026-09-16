@@ -1,7 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import * as FileSystem from 'expo-file-system/legacy';
 import { useFocusEffect, useRouter } from 'expo-router';
-import * as Sharing from 'expo-sharing';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeTop } from '../../hooks/useSafeTop';
@@ -19,6 +17,7 @@ import { SelectSheet } from '../../components/ui/SelectSheet';
 import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { api, getErrorMessage } from '../../lib/api';
+import { hasExportDirectory, resetExportDirectory, saveExportedFile } from '../../lib/exportFile';
 import type { Expense, SearchResultExpense } from '../../lib/types';
 import { cleanExpenseDescription, formatCurrency, formatDate } from '../../lib/utils';
 import { toast } from '../../store/toastStore';
@@ -87,6 +86,7 @@ export default function ExpensesScreen() {
   const [exportFrom, setExportFrom] = useState('');
   const [exportTo, setExportTo] = useState('');
   const [isExporting, setIsExporting] = useState(false);
+  const [canChangeFolder, setCanChangeFolder] = useState(false);
 
   const minDateFree = isoDaysAgo(90);
   const firstLoad = useRef(true);
@@ -195,29 +195,40 @@ export default function ExpensesScreen() {
     }
   };
 
+  const openExportSheet = async () => {
+    setExportSheetOpen(true);
+    setCanChangeFolder(await hasExportDirectory());
+  };
+
   const handleExport = async () => {
     setIsExporting(true);
     try {
       const buffer = await api.exportExpenses(exportFormat, exportFrom || undefined, exportTo || undefined);
-      const filename = `expenses-${new Date().toISOString().slice(0, 10)}.${exportFormat}`;
-      const fileUri = `${FileSystem.cacheDirectory}${filename}`;
-      await FileSystem.writeAsStringAsync(fileUri, base64FromArrayBuffer(buffer), {
-        encoding: FileSystem.EncodingType.Base64,
+      const result = await saveExportedFile({
+        base64: base64FromArrayBuffer(buffer),
+        baseName: `expenses-${new Date().toISOString().slice(0, 10)}`,
+        extension: exportFormat,
+        mimeType: exportFormat === 'csv' ? 'text/csv' : 'application/pdf',
       });
-      setExportSheetOpen(false);
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(fileUri, {
-          mimeType: exportFormat === 'csv' ? 'text/csv' : 'application/pdf',
-          dialogTitle: 'Export expenses',
-        });
-      } else {
-        toast.success(`Saved to ${fileUri}`);
+
+      if (result.status === 'cancelled') {
+        toast.error('Export cancelled — no folder was chosen');
+        return;
       }
+
+      setExportSheetOpen(false);
+      toast.success(`Saved to ${result.location}`);
     } catch (error) {
       toast.error(getErrorMessage(error, 'Export failed'));
     } finally {
       setIsExporting(false);
     }
+  };
+
+  const handleChangeFolder = async () => {
+    await resetExportDirectory();
+    setCanChangeFolder(false);
+    toast.success('You will be asked for a folder on the next export');
   };
 
   const runSearch = async () => {
@@ -293,7 +304,7 @@ export default function ExpensesScreen() {
           </View>
           <View style={{ flexDirection: 'row', gap: spacing.s2 }}>
             <Pressable
-              onPress={() => (isPremium ? setExportSheetOpen(true) : toast.error('Export is available on Premium'))}
+              onPress={() => (isPremium ? openExportSheet() : toast.error('Export is available on Premium'))}
               style={[styles.iconBtn, { borderColor: colors.border, backgroundColor: colors.bgCard, opacity: isPremium ? 1 : 0.5 }]}
             >
               <Ionicons name={isPremium ? 'download-outline' : 'lock-closed-outline'} size={18} color={colors.textPrimary} />
@@ -591,6 +602,13 @@ export default function ExpensesScreen() {
           <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }}>
             Leave dates empty to export all expenses.
           </Text>
+          {canChangeFolder ? (
+            <Pressable onPress={handleChangeFolder} hitSlop={6}>
+              <Text style={{ color: colors.accent, fontSize: fontSize.sm, fontFamily: fonts.semibold }}>
+                Change download folder
+              </Text>
+            </Pressable>
+          ) : null}
           <View style={{ flexDirection: 'row', gap: spacing.s2 }}>
             <Button title="Cancel" variant="outline" style={{ flex: 1 }} onPress={() => setExportSheetOpen(false)} />
             <Button title={isExporting ? 'Exporting…' : 'Export'} style={{ flex: 1 }} onPress={handleExport} loading={isExporting} />

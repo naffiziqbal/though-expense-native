@@ -13,7 +13,11 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.nafiziqbal.thoughtexpense"
+      "bundleIdentifier": "com.nafiziqbal.thoughtexpense",
+      "infoPlist": {
+        "UIFileSharingEnabled": true,
+        "LSSupportsOpeningDocumentsInPlace": true
+      }
     },
     "android": {
       "edgeToEdgeEnabled": true,
