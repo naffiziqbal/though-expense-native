@@ -48,6 +48,8 @@ export default function ProfileScreen() {
     {
       title: 'APP SETTINGS',
       items: [
+        { icon: 'notifications', iconColor: '#DB2777', title: 'Notifications', subtitle: 'Alerts & daily reminder', href: '/notifications' },
+        { icon: 'repeat', iconColor: '#0284C7', title: 'Recurring', subtitle: 'Auto-log subscriptions & bills', href: '/recurring' },
         { icon: 'wallet', iconColor: '#9333EA', title: 'Accounts', subtitle: 'Manage bank & cash', comingSoon: true },
         { icon: 'phone-portrait', iconColor: '#475569', title: 'Device Settings', subtitle: 'Dark mode & appearance', href: '/device-settings' },
         { icon: 'globe', iconColor: '#4F46E5', title: 'Currencies', subtitle: `${user?.currency || 'USD'} and more`, href: '/currencies' },

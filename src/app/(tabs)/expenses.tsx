@@ -23,7 +23,7 @@ import type { Expense, SearchResultExpense } from '../../lib/types';
 import { cleanExpenseDescription, formatCurrency, formatDate } from '../../lib/utils';
 import { toast } from '../../store/toastStore';
 import { useAuthStore } from '../../store/authStore';
-import { usePendingStore } from '../../store/pendingStore';
+import { usePendingExpenses } from '../../hooks/usePendingExpenses';
 
 const PAGE_SIZE = 10;
 
@@ -54,7 +54,7 @@ export default function ExpensesScreen() {
   const router = useRouter();
   const topInset = useSafeTop();
   const { user } = useAuthStore();
-  const pending = usePendingStore((s) => s.items);
+  const pending = usePendingExpenses();
   const isPremium = user?.isPremium ?? false;
 
   const [expenses, setExpenses] = useState<Expense[]>([]);

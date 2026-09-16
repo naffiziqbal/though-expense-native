@@ -485,6 +485,12 @@ export default function InsightsScreen() {
               </View>
             ))}
           </View>
+          <Button
+            title="Log these automatically"
+            variant="outline"
+            onPress={() => router.push('/recurring')}
+            style={{ marginTop: spacing.s3 }}
+          />
         </Card>
       ) : null}
 

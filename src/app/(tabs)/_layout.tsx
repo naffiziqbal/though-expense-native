@@ -1,19 +1,30 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Redirect, Tabs } from 'expo-router';
+import { useQuickActionRouting } from 'expo-quick-actions/router';
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { radius } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { useAuthStore } from '../../store/authStore';
+import { useOnboardingStore } from '../../store/onboardingStore';
 
 export default function TabsLayout() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const { isAuthenticated, isLoading } = useAuthStore();
+  const { isAuthenticated, isLoading, user } = useAuthStore();
+  const needsOnboarding = useOnboardingStore((s) => s.needsOnboarding);
+
+  // Home-screen shortcuts navigate via params.href. Must live below the root
+  // layout, which is why it is here and not in app/_layout.tsx.
+  useQuickActionRouting();
 
   if (!isLoading && !isAuthenticated) {
     return <Redirect href="/(auth)/login" />;
+  }
+
+  if (!isLoading && isAuthenticated && user && needsOnboarding(user.id)) {
+    return <Redirect href="/onboarding" />;
   }
 
   return (

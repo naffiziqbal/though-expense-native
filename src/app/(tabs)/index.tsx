@@ -14,6 +14,7 @@ import { Screen } from '../../components/ui/Screen';
 import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { api } from '../../lib/api';
+import { usePendingExpenses } from '../../hooks/usePendingExpenses';
 import { addPendingToTotals } from '../../lib/pendingExpenses';
 import type { BudgetSummary, CategorySummary, Expense, Goal, Insight } from '../../lib/types';
 import { formatCurrency, formatDate } from '../../lib/utils';
@@ -40,7 +41,7 @@ export default function HomeScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const { user } = useAuthStore();
-  const pending = usePendingStore((s) => s.items);
+  const pending = usePendingExpenses();
   const isPremium = user?.isPremium ?? false;
 
   const [summary, setSummary] = useState<CategorySummary | null>(null);
@@ -150,14 +151,14 @@ export default function HomeScreen() {
   const notifications: NotificationItem[] = [];
   if (displayBudget && displayBudget.percentage >= 100) {
     notifications.push({
-      id: `budget-exceeded-${budget.year}-${budget.month}`,
+      id: `budget-exceeded-${displayBudget.year}-${displayBudget.month}`,
       type: 'budget-exceeded',
       content: 'You have exceeded your monthly budget',
       meta: `${formatCurrency(displayBudget.total_spent, currency)} of ${formatCurrency(displayBudget.total_limit, currency)} (${displayBudget.percentage}%)`,
     });
   } else if (displayBudget && displayBudget.percentage >= 90) {
     notifications.push({
-      id: `budget-warning-${budget.year}-${budget.month}`,
+      id: `budget-warning-${displayBudget.year}-${displayBudget.month}`,
       type: 'budget-warning',
       content: 'You are about to exceed your monthly budget',
       meta: `${formatCurrency(displayBudget.total_spent, currency)} of ${formatCurrency(displayBudget.total_limit, currency)} (${displayBudget.percentage}%)`,

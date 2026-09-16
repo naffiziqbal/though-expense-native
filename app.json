@@ -52,7 +52,17 @@
         {
           "cameraPermission": "ThoughtExpense uses the camera to scan receipts."
         }
-      ]
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/android-icon-monochrome.png",
+          "color": "#0E9488",
+          "defaultChannel": "default"
+        }
+      ],
+      "@sentry/react-native",
+      "expo-quick-actions"
     ],
     "experiments": {
       "typedRoutes": true,

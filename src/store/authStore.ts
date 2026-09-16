@@ -4,7 +4,10 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { api, setUnauthorizedHandler } from '../lib/api';
 import { resetBilling } from '../lib/billing';
+import { cancelDailyReminder } from '../lib/notifications';
 import type { User } from '../lib/types';
+import { useNotificationStore } from './notificationStore';
+import { useOutboxStore } from './outboxStore';
 import { usePendingStore } from './pendingStore';
 
 interface AuthState {
@@ -48,9 +51,20 @@ export const useAuthStore = create<AuthState>()(
       setHasHydrated: (hydrated) => set({ _hasHydrated: hydrated }),
 
       logout: async () => {
+        // Stop pushes to this device before the token is discarded, so the next
+        // account signing in here doesn't inherit the previous user's alerts.
+        const { registeredToken, setRegisteredToken } = useNotificationStore.getState();
+        if (registeredToken) {
+          await api.unregisterPushToken(registeredToken).catch(() => {});
+          setRegisteredToken(null);
+        }
+        await cancelDailyReminder();
+
         await api.logout();
         await resetBilling();
         usePendingStore.getState().clear();
+        // Unsent offline saves belong to the account that made them.
+        useOutboxStore.getState().clear();
         set({ user: null, isAuthenticated: false, error: null });
       },
 

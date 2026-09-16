@@ -9,6 +9,7 @@ import type {
   CategoryBudgetProgress,
   CategorySummaryResponse,
   ChatTurn,
+  DetectedRecurring,
   Expense,
   ExpenseFilters,
   ExpenseSearchResult,
@@ -17,8 +18,11 @@ import type {
   Goal,
   InsightsResponse,
   LoginRequest,
+  NotificationPreferences,
   ParseExpenseRequest,
   ParseExpenseResponse,
+  RecurringFrequency,
+  RecurringRule,
   SavingsPlan,
   SignupRequest,
   SpendingIntelligence,
@@ -390,20 +394,90 @@ class ApiClient {
 
   async getRecurringExpenses(): Promise<{
     success: boolean;
-    data: {
-      recurring: Array<{
-        description: string;
-        category: string;
-        averageAmount: number;
-        currency: string;
-        occurrences: number;
-        monthsSeen: number;
-        lastDate: string;
-      }>;
-      windowMonths: number;
-    };
+    data: { recurring: DetectedRecurring[]; windowMonths: number };
   }> {
     const response = await this.client.get('/api/expenses/recurring');
+    return response.data;
+  }
+
+  // Recurring rule endpoints (auto-logged repeats)
+  async getRecurringRules(): Promise<{ success: boolean; data: { rules: RecurringRule[] } }> {
+    const response = await this.client.get('/api/recurring');
+    return response.data;
+  }
+
+  async createRecurringRule(payload: {
+    description: string;
+    amount: number;
+    currency?: string;
+    category?: string;
+    frequency?: RecurringFrequency;
+    dayOfMonth?: number;
+    dayOfWeek?: number;
+  }): Promise<{ success: boolean; message: string; data: { rule: RecurringRule } }> {
+    const response = await this.client.post('/api/recurring', payload);
+    return response.data;
+  }
+
+  async updateRecurringRule(
+    id: string,
+    payload: {
+      description?: string;
+      amount?: number;
+      category?: string;
+      frequency?: RecurringFrequency;
+      dayOfMonth?: number;
+      dayOfWeek?: number;
+      isActive?: boolean;
+    }
+  ): Promise<{ success: boolean; message: string; data: { rule: RecurringRule } }> {
+    const response = await this.client.patch(`/api/recurring/${id}`, payload);
+    return response.data;
+  }
+
+  async deleteRecurringRule(id: string): Promise<{ success: boolean; message: string }> {
+    const response = await this.client.delete(`/api/recurring/${id}`);
+    return response.data;
+  }
+
+  async runRecurringRule(
+    id: string
+  ): Promise<{ success: boolean; message: string; data: { expense: Expense } }> {
+    const response = await this.client.post(`/api/recurring/${id}/run`);
+    return response.data;
+  }
+
+  // Notification endpoints
+  async registerPushToken(
+    token: string,
+    platform: 'ios' | 'android'
+  ): Promise<{ success: boolean; message: string }> {
+    const response = await this.client.post('/api/notifications/register', { token, platform });
+    return response.data;
+  }
+
+  async unregisterPushToken(token: string): Promise<{ success: boolean; message: string }> {
+    const response = await this.client.post('/api/notifications/unregister', { token });
+    return response.data;
+  }
+
+  async getNotificationPreferences(): Promise<{
+    success: boolean;
+    data: NotificationPreferences;
+  }> {
+    const response = await this.client.get('/api/notifications/preferences');
+    return response.data;
+  }
+
+  async updateNotificationPreferences(
+    payload: Partial<NotificationPreferences>
+  ): Promise<{ success: boolean; message: string; data: NotificationPreferences }> {
+    const response = await this.client.patch('/api/notifications/preferences', payload);
+    return response.data;
+  }
+
+  async sendTestPush(): Promise<{ success: boolean; message: string; data: { delivered: number } }> {
+    const response = await this.client.post('/api/notifications/test');
     return response.data;
   }
 

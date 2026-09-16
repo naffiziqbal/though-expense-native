@@ -292,6 +292,42 @@ export interface Goal {
   updatedAt: string;
 }
 
+export type RecurringFrequency = 'weekly' | 'monthly';
+
+/** A user-confirmed rule the server auto-logs on schedule. */
+export interface RecurringRule {
+  id: string;
+  userId: string;
+  description: string;
+  amount: number;
+  currency: string;
+  category: string;
+  frequency: RecurringFrequency;
+  dayOfMonth: number | null;
+  dayOfWeek: number | null;
+  nextRunAt: string;
+  lastRunAt: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Detected-but-not-yet-confirmed repeat, from GET /api/expenses/recurring. */
+export interface DetectedRecurring {
+  description: string;
+  category: string;
+  averageAmount: number;
+  currency: string;
+  occurrences: number;
+  monthsSeen: number;
+  lastDate: string;
+}
+
+export interface NotificationPreferences {
+  pushEnabled: boolean;
+  budgetAlertsEnabled: boolean;
+}
+
 export interface ApiError {
   success: false;
   message: string;

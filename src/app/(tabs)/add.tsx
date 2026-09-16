@@ -4,6 +4,8 @@ import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { KeyboardSpacer } from '../../components/ui/KeyboardSpacer';
+import { useClipboardCapture } from '../../hooks/useClipboardCapture';
+import { isCurrentlyOffline } from '../../hooks/useOutboxSync';
 import { useSafeTop } from '../../hooks/useSafeTop';
 import { CategoryIconBubble } from '../../components/CategoryIconBubble';
 import { Button } from '../../components/ui/Button';
@@ -15,6 +17,7 @@ import { api, getErrorMessage } from '../../lib/api';
 import { formatCurrency, getCategoryFromKeyword, parseExpenseInputLocally } from '../../lib/utils';
 import { toast } from '../../store/toastStore';
 import { useAuthStore } from '../../store/authStore';
+import { useOutboxStore } from '../../store/outboxStore';
 import { usePendingStore } from '../../store/pendingStore';
 
 interface ReceiptItem {
@@ -75,6 +78,17 @@ export default function AddExpenseScreen() {
   const handleInputChange = (value: string) => {
     setRawInput(value);
     updatePreview(value);
+  };
+
+  const { suggestion: clipboardSuggestion, dismiss: dismissClipboard } =
+    useClipboardCapture(rawInput);
+
+  const applyClipboard = () => {
+    if (!clipboardSuggestion) return;
+    const next = rawInput.trim() ? `${rawInput.trim()}, ${clipboardSuggestion}` : clipboardSuggestion;
+    setRawInput(next);
+    updatePreview(next);
+    dismissClipboard();
   };
 
   const handleEditItem = (id: string, description: string) => {
@@ -147,6 +161,34 @@ export default function AddExpenseScreen() {
       rawInput: p.rawInput,
     }));
 
+    const queueOffline = (reason: 'offline' | 'network-error') => {
+      useOutboxStore.getState().enqueue({
+        id: batchId,
+        rawInput: toSubmit,
+        date: selectedDate,
+        items: localPreview.map((p) => ({
+          description: p.description,
+          amount: p.amount,
+          currency,
+          category: p.category || 'Other',
+          date: selectedDate,
+          rawInput: p.rawInput || toSubmit,
+        })),
+      });
+      setRawInput('');
+      setReceiptItems([]);
+      toast.success(
+        reason === 'offline' ? 'Saved offline — will sync when you reconnect' : 'Saved — will sync shortly'
+      );
+      router.push('/(tabs)');
+    };
+
+    if (await isCurrentlyOffline()) {
+      queueOffline('offline');
+      setIsSaving(false);
+      return;
+    }
+
     try {
       const res = await api.enqueueParseExpenses(
         { rawInput: toSubmit, create: true, localPreview, clientBatchId: batchId },
@@ -172,7 +214,14 @@ export default function AddExpenseScreen() {
       toast.success('Saved');
       router.push('/(tabs)');
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Failed to queue expenses'));
+      // The request never reached the server, so the same idempotency key is
+      // safe to replay from the outbox.
+      const axiosError = error as { response?: unknown; code?: string };
+      if (!axiosError.response || axiosError.code === 'ECONNABORTED') {
+        queueOffline('network-error');
+      } else {
+        toast.error(getErrorMessage(error, 'Failed to queue expenses'));
+      }
     } finally {
       setIsSaving(false);
     }
@@ -275,6 +324,28 @@ export default function AddExpenseScreen() {
               </View>
             </View>
           </Card>
+
+          {/* One-tap capture from the clipboard */}
+          {clipboardSuggestion ? (
+            <Pressable
+              onPress={applyClipboard}
+              style={[
+                styles.clipboardChip,
+                { backgroundColor: colors.accentSoft, borderColor: colors.accent },
+              ]}
+            >
+              <Ionicons name="clipboard-outline" size={16} color={colors.accent} />
+              <Text
+                style={{ color: colors.textPrimary, fontSize: fontSize.sm, flex: 1 }}
+                numberOfLines={1}
+              >
+                Add “{clipboardSuggestion}” from clipboard
+              </Text>
+              <Pressable onPress={dismissClipboard} hitSlop={10}>
+                <Ionicons name="close" size={16} color={colors.textMuted} />
+              </Pressable>
+            </Pressable>
+          ) : null}
 
           {/* Detected items indicator */}
           {receiptItems.length > 0 && itemsToSave.length === 0 ? (
@@ -380,5 +451,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.s3,
     padding: spacing.s3,
+  },
+  clipboardChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.s2,
+    borderWidth: 1,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.s3,
+    paddingVertical: spacing.s2,
   },
 });

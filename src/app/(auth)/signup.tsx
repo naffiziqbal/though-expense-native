@@ -13,6 +13,7 @@ import { api, getErrorMessage } from '../../lib/api';
 import { CURRENCIES, getDefaultCurrency } from '../../lib/currencies';
 import { toast } from '../../store/toastStore';
 import { useAuthStore } from '../../store/authStore';
+import { useOnboardingStore } from '../../store/onboardingStore';
 
 function getPasswordStrength(pwd: string): 0 | 1 | 2 | 3 | 4 {
   if (!pwd.length) return 0;
@@ -28,6 +29,7 @@ export default function SignupScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const setUser = useAuthStore((s) => s.setUser);
+  const markPending = useOnboardingStore((s) => s.markPending);
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -64,8 +66,9 @@ export default function SignupScreen() {
       });
       if (response.success) {
         setUser(response.data.user);
+        markPending(response.data.user.id);
         toast.success('Account created successfully!');
-        router.replace('/(tabs)/add');
+        router.replace('/onboarding');
       }
     } catch (error) {
       toast.error(getErrorMessage(error, 'Failed to create account. Please try again.'));
