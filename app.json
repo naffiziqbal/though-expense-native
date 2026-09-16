@@ -65,7 +65,13 @@
           "defaultChannel": "default"
         }
       ],
-      "@sentry/react-native",
+      [
+        "@sentry/react-native",
+        {
+          "organization": "nexusbenders",
+          "project": "react-native"
+        }
+      ],
       "expo-quick-actions"
     ],
     "experiments": {

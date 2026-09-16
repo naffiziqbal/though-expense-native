@@ -12,12 +12,18 @@
     "preview": {
       "distribution": "internal",
       "android": { "buildType": "apk" },
-      "env": { "EXPO_PUBLIC_API_URL": "https://api.thought-expense.nafiziqbal.com" }
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.thought-expense.nafiziqbal.com",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://918eaaf268a392a6c8b07d7ab1af0e2f@o4512057220136960.ingest.us.sentry.io/4512097420574720"
+      }
     },
     "production": {
       "autoIncrement": true,
       "android": { "buildType": "app-bundle" },
-      "env": { "EXPO_PUBLIC_API_URL": "https://api.thought-expense.nafiziqbal.com" }
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.thought-expense.nafiziqbal.com",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://918eaaf268a392a6c8b07d7ab1af0e2f@o4512057220136960.ingest.us.sentry.io/4512097420574720"
+      }
     }
   },
   "submit": {
