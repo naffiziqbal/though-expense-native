@@ -1,14 +1,19 @@
 import { useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
 import { api } from '../lib/api';
+import { useAuthStore } from '../store/authStore';
 import { usePendingStore } from '../store/pendingStore';
 
 export function usePendingParseSync() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isLoading = useAuthStore((s) => s.isLoading);
   const items = usePendingStore((s) => s.items);
   const removeByJobId = usePendingStore((s) => s.removeByJobId);
   const ticking = useRef(false);
 
   useEffect(() => {
+    if (!isAuthenticated || isLoading) return;
+
     const poll = async () => {
       if (ticking.current) return;
       const jobs = [...new Set(usePendingStore.getState().items.map((p) => p.jobId).filter(Boolean))];
@@ -22,8 +27,11 @@ export function usePendingParseSync() {
             if (status === 'completed') {
               removeByJobId(jobId);
             }
-          } catch {
-            // Job not found after TTL — drop stale pending
+          } catch (err: unknown) {
+            const status = (err as { response?: { status?: number } })?.response?.status;
+            if (status === 404 || status === 401 || status === 403) {
+              removeByJobId(jobId);
+            }
           }
         }
       } finally {
@@ -40,5 +48,5 @@ export function usePendingParseSync() {
       clearInterval(interval);
       sub.remove();
     };
-  }, [items, removeByJobId]);
+  }, [isAuthenticated, isLoading, items, removeByJobId]);
 }

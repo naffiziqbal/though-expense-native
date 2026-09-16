@@ -32,6 +32,18 @@ const BASE_URL_KEY = 'thoughtexpense_base_url';
 
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:7100';
 
+/** Login failures, anonymous polls, and stale parse-job checks must not wipe the session. */
+function shouldClearSessionOn401(error: AxiosError): boolean {
+  if (error.response?.status !== 401) return false;
+  const url = error.config?.url || '';
+  if (url.includes('/api/auth/login') || url.includes('/api/auth/signup')) return false;
+  if (url.includes('/parse/jobs/')) return false;
+  const header = error.config?.headers?.Authorization;
+  const auth = typeof header === 'string' ? header : Array.isArray(header) ? header[0] : '';
+  if (!auth) return false;
+  return true;
+}
+
 /** Called when a 401 invalidates the session (wired up by the auth store). */
 let onUnauthorized: (() => void) | null = null;
 export function setUnauthorizedHandler(handler: () => void) {
@@ -59,13 +71,9 @@ class ApiClient {
     this.client.interceptors.response.use(
       (response) => response,
       async (error: AxiosError) => {
-        if (error.response?.status === 401) {
-          const url = error.config?.url || '';
-          const isAuthEndpoint = url.includes('/api/auth/login') || url.includes('/api/auth/signup');
-          if (!isAuthEndpoint) {
-            await this.clearToken();
-            onUnauthorized?.();
-          }
+        if (shouldClearSessionOn401(error)) {
+          await this.clearToken();
+          onUnauthorized?.();
         }
         return Promise.reject(error);
       }
