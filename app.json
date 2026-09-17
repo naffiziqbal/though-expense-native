@@ -20,7 +20,6 @@
       }
     },
     "android": {
-      "edgeToEdgeEnabled": true,
       "package": "com.nafiziqbal.thoughtexpense",
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
