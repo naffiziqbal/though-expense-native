@@ -54,7 +54,8 @@
     "overrides": {
       "@types/node": "22.19.21",
       "electron-to-chromium": "1.5.428"
-    }
+    },
+    "onlyBuiltDependencies": ["@sentry/cli"]
   },
   "scripts": {
     "start": "expo start",
