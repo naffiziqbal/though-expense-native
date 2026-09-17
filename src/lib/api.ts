@@ -30,6 +30,7 @@ import type {
 } from './types';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { captureError } from './sentry';
 
 const TOKEN_KEY = 'thoughtexpense_token';
 const BASE_URL_KEY = 'thoughtexpense_base_url';
@@ -75,6 +76,14 @@ class ApiClient {
     this.client.interceptors.response.use(
       (response) => response,
       async (error: AxiosError) => {
+        const status = error.response?.status;
+        if (status && status >= 500) {
+          captureError(error, {
+            url: error.config?.url,
+            method: error.config?.method,
+            status,
+          });
+        }
         if (shouldClearSessionOn401(error)) {
           await this.clearToken();
           onUnauthorized?.();
@@ -597,6 +606,9 @@ export function getErrorMessage(error: unknown, fallback = 'Something went wrong
     const data = error.response?.data as { message?: string; errors?: Array<{ message: string }> } | undefined;
     if (data?.errors?.length) return data.errors.map((e) => e.message).join('\n');
     if (data?.message) return data.message;
+    if (error.response?.status === 502 || error.response?.status === 503) {
+      return 'The server is restarting or the push service is unreachable. Try again in a moment.';
+    }
     if (error.code === 'ECONNABORTED') return 'Request timed out. Please try again.';
     if (!error.response) return `Cannot reach server at ${api.getBaseUrl()}. Check your connection, or change the server URL in Device Settings.`;
   }

@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import { api } from '../lib/api';
+import { captureError } from '../lib/sentry';
 import {
   ensureAndroidChannel,
   getExpoPushToken,
@@ -49,8 +50,9 @@ export function usePushNotifications() {
         await api.registerPushToken(token, Platform.OS === 'ios' ? 'ios' : 'android');
         useNotificationStore.getState().setRegisteredToken(token);
         useNotificationStore.getState().setHasPrompted(true);
-      } catch {
-        // Retried on the next launch.
+      } catch (error) {
+        registeredFor.current = null;
+        captureError(error, { source: 'registerPushToken' });
       }
 
       const { reminderEnabled, reminderHour, reminderMinute } = useNotificationStore.getState();

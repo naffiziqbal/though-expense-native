@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "445693981999",
+    "project_id": "thought-expense-b65a0",
+    "storage_bucket": "thought-expense-b65a0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:445693981999:android:24920a1962e8baad9f5dda",
+        "android_client_info": {
+          "package_name": "com.nafiziqbal.thoughtexpense"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBpl23qwALyWZZl1vxiKVyt9eyTVRibQt0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

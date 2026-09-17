@@ -2,6 +2,7 @@ import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import { captureError } from './sentry';
 
 export const DAILY_REMINDER_ID = 'daily-log-reminder';
 
@@ -60,14 +61,17 @@ export async function getExpoPushToken(): Promise<string | null> {
   if (!Device.isDevice) return null;
 
   const id = projectId();
-  if (!id) return null;
+  if (!id) {
+    captureError(new Error('Missing EAS projectId for Expo push'), { source: 'getExpoPushToken' });
+    return null;
+  }
 
   try {
     await ensureAndroidChannel();
     const { data } = await Notifications.getExpoPushTokenAsync({ projectId: id });
     return data || null;
-  } catch {
-    // No FCM/APNs credentials in this build, or the device is offline.
+  } catch (error) {
+    captureError(error, { source: 'getExpoPushToken' });
     return null;
   }
 }

@@ -9,6 +9,7 @@ import { Screen } from '../components/ui/Screen';
 import { fonts, fontSize, radius, spacing } from '../constants/theme';
 import { useTheme } from '../hooks/useTheme';
 import { api, getErrorMessage } from '../lib/api';
+import { captureError } from '../lib/sentry';
 import {
   cancelDailyReminder,
   getExpoPushToken,
@@ -88,7 +89,10 @@ export default function NotificationsScreen() {
     (async () => {
       const [status, prefs] = await Promise.all([
         getPermissionStatus(),
-        api.getNotificationPreferences().catch(() => null),
+        api.getNotificationPreferences().catch((error) => {
+          toast.error(getErrorMessage(error, 'Could not load notification settings'));
+          return null;
+        }),
       ]);
       setPermission(status);
       if (prefs?.success) setServerPrefs(prefs.data);
@@ -134,14 +138,22 @@ export default function NotificationsScreen() {
     }
 
     const token = await getExpoPushToken();
-    if (token) {
-      try {
-        await api.registerPushToken(token, Platform.OS === 'ios' ? 'ios' : 'android');
-        setRegisteredToken(token);
-      } catch {
-        // Preference still saves; registration retries on next launch.
-      }
+    if (!token) {
+      toast.error(
+        'Could not get a push token. This build needs FCM (Android) or APNs (iOS) credentials in Expo.'
+      );
+      return;
     }
+
+    try {
+      await api.registerPushToken(token, Platform.OS === 'ios' ? 'ios' : 'android');
+      setRegisteredToken(token);
+    } catch (error) {
+      captureError(error, { source: 'registerPushToken' });
+      toast.error(getErrorMessage(error, 'Could not register this device for push'));
+      return;
+    }
+
     await savePrefs({ pushEnabled: true });
   };
 
