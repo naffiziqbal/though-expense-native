@@ -582,6 +582,12 @@ class ApiClient {
 
 export const api = new ApiClient();
 
+/** True when the request never reached the API (offline, DNS, timeout). */
+export function isUnreachableError(error: unknown): boolean {
+  if (!axios.isAxiosError(error)) return false;
+  return !error.response;
+}
+
 /** Extract a human-readable message from an API error. */
 export function getErrorMessage(error: unknown, fallback = 'Something went wrong'): string {
   if (axios.isAxiosError(error)) {

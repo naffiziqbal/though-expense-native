@@ -16,6 +16,7 @@ async function flushBatch(batch: OutboxBatch): Promise<'sent' | 'retry' | 'drop'
       {
         rawInput: batch.rawInput,
         create: true,
+        date: batch.date,
         localPreview: batch.items,
         clientBatchId: batch.id,
       },

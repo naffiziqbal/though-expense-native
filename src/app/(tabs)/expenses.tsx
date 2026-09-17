@@ -16,7 +16,15 @@ import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import { SelectSheet } from '../../components/ui/SelectSheet';
 import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
-import { api, getErrorMessage } from '../../lib/api';
+import { isCurrentlyOffline } from '../../hooks/useOutboxSync';
+import { api, getErrorMessage, isUnreachableError } from '../../lib/api';
+import {
+  formatCacheAge,
+  readCategoryCache,
+  readExpenseCache,
+  writeCategoryCache,
+  writeExpenseCache,
+} from '../../lib/expenseCache';
 import { hasExportDirectory, resetExportDirectory, saveExportedFile } from '../../lib/exportFile';
 import type { Expense, SearchResultExpense } from '../../lib/types';
 import { cleanExpenseDescription, formatCurrency, formatDate } from '../../lib/utils';
@@ -61,6 +69,8 @@ export default function ExpensesScreen() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [categories, setCategories] = useState<string[]>([]);
+  const [showingCached, setShowingCached] = useState(false);
+  const [cacheSavedAt, setCacheSavedAt] = useState<number | null>(null);
 
   // Natural-language search
   const [searchQuery, setSearchQuery] = useState('');
@@ -90,12 +100,32 @@ export default function ExpensesScreen() {
 
   const minDateFree = isoDaysAgo(90);
   const firstLoad = useRef(true);
+  const fetchGen = useRef(0);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const fetchExpenses = useCallback(
     async (targetPage: number, activeFilters: typeof filters) => {
-      setIsLoading(true);
+      const gen = ++fetchGen.current;
+      const userId = user?.id;
+      const cacheFilters = {
+        category: activeFilters.category,
+        startDate: activeFilters.startDate,
+        endDate: activeFilters.endDate,
+      };
+      const cached = userId ? await readExpenseCache(userId, targetPage, cacheFilters) : null;
+      if (gen !== fetchGen.current) return;
+
+      if (cached) {
+        setExpenses(cached.expenses);
+        setTotal(cached.total);
+        setShowingCached(true);
+        setCacheSavedAt(cached.savedAt);
+        setIsLoading(false);
+      } else {
+        setIsLoading(true);
+      }
+
       try {
         const offset = (targetPage - 1) * PAGE_SIZE;
         const startDate =
@@ -109,27 +139,53 @@ export default function ExpensesScreen() {
           limit: PAGE_SIZE,
           offset,
         });
+        if (gen !== fetchGen.current) return;
         if (response.success) {
           setExpenses(response.data.expenses);
           setTotal(response.data.pagination.total);
+          setShowingCached(false);
+          setCacheSavedAt(null);
+          if (userId) {
+            await writeExpenseCache(userId, targetPage, cacheFilters, {
+              expenses: response.data.expenses,
+              total: response.data.pagination.total,
+              categories: [],
+            });
+          }
         }
-      } catch {
-        toast.error('Failed to fetch expenses');
+      } catch (error) {
+        if (gen !== fetchGen.current) return;
+        if (cached) return;
+        setExpenses([]);
+        setTotal(0);
+        const unreachable = isUnreachableError(error) || (await isCurrentlyOffline());
+        setShowingCached(unreachable);
+        setCacheSavedAt(null);
+        if (!unreachable) toast.error('Failed to fetch expenses');
       } finally {
-        setIsLoading(false);
+        if (gen === fetchGen.current) setIsLoading(false);
       }
     },
-    [isPremium, minDateFree]
+    [isPremium, minDateFree, user?.id]
   );
 
   const fetchCategories = useCallback(async () => {
+    const userId = user?.id;
+    if (userId) {
+      const cached = await readCategoryCache(userId);
+      if (cached.length) setCategories(cached);
+    }
     try {
       const res = await api.getCategorySummary();
-      if (res.success && res.data.byCategory) setCategories(Object.keys(res.data.byCategory));
+      if (res.success && res.data.byCategory) {
+        const next = Object.keys(res.data.byCategory);
+        setCategories(next);
+        if (userId) await writeCategoryCache(userId, next);
+      }
     } catch {
-      // no categories yet
+      // keep whatever we hydrated from cache
     }
-  }, []);
+  }, [user?.id]);
 
   useFocusEffect(
     useCallback(() => {
@@ -243,6 +299,11 @@ export default function ExpensesScreen() {
         setSearchCurrency(res.data.currency);
       }
     } catch (error) {
+      const unreachable = isUnreachableError(error) || (await isCurrentlyOffline());
+      if (unreachable) {
+        toast.info('Search needs a connection. Your saved list is still available.');
+        return;
+      }
       toast.error(getErrorMessage(error, 'Search failed'));
     } finally {
       setIsSearching(false);
@@ -301,6 +362,11 @@ export default function ExpensesScreen() {
             <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }}>
               {total} transaction{total !== 1 ? 's' : ''}
             </Text>
+            {showingCached ? (
+              <Text style={{ color: colors.textMuted, fontSize: fontSize.xs, marginTop: 2 }}>
+                Last downloaded{cacheSavedAt ? ` · ${formatCacheAge(cacheSavedAt)}` : ''}
+              </Text>
+            ) : null}
           </View>
           <View style={{ flexDirection: 'row', gap: spacing.s2 }}>
             <Pressable
@@ -401,15 +467,19 @@ export default function ExpensesScreen() {
               />
             </Card>
           )
-        ) : isLoading ? (
+        ) : isLoading && displayExpenses.length === 0 ? (
           <View style={styles.center}>
             <ActivityIndicator size="large" color={colors.accent} />
           </View>
         ) : displayExpenses.length === 0 ? (
           <EmptyState
-            icon="receipt-outline"
-            title="No expenses found"
-            message="Try adjusting your filters or add new expenses"
+            icon={showingCached ? 'cloud-offline-outline' : 'receipt-outline'}
+            title={showingCached ? 'Nothing saved on this device' : 'No expenses found'}
+            message={
+              showingCached
+                ? 'Open this list while online once, and it will be here next time you are offline.'
+                : 'Try adjusting your filters or add new expenses'
+            }
           />
         ) : (
           <Card padded={false} style={{ flex: 1 }}>

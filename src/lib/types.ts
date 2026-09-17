@@ -48,6 +48,7 @@ export interface Expense {
 
 export interface ParseExpenseRequest {
   rawInput: string;
+  date?: string;
 }
 
 export interface ParseExpenseResponse {

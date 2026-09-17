@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { api, setUnauthorizedHandler } from '../lib/api';
 import { resetBilling } from '../lib/billing';
+import { clearExpenseCache } from '../lib/expenseCache';
 import { cancelDailyReminder } from '../lib/notifications';
 import type { User } from '../lib/types';
 import { useNotificationStore } from './notificationStore';
@@ -65,6 +66,7 @@ export const useAuthStore = create<AuthState>()(
         usePendingStore.getState().clear();
         // Unsent offline saves belong to the account that made them.
         useOutboxStore.getState().clear();
+        await clearExpenseCache();
         set({ user: null, isAuthenticated: false, error: null });
       },
 
@@ -119,4 +121,5 @@ export const useAuthStore = create<AuthState>()(
 // When any request 401s, drop the session.
 setUnauthorizedHandler(() => {
   useAuthStore.getState().clearUser();
+  void clearExpenseCache();
 });
