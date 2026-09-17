@@ -25,7 +25,7 @@ import {
   writeCategoryCache,
   writeExpenseCache,
 } from '../../lib/expenseCache';
-import { hasExportDirectory, resetExportDirectory, saveExportedFile } from '../../lib/exportFile';
+import { saveExportedFile } from '../../lib/exportFile';
 import type { Expense, SearchResultExpense } from '../../lib/types';
 import { cleanExpenseDescription, formatCurrency, formatDate } from '../../lib/utils';
 import { toast } from '../../store/toastStore';
@@ -96,7 +96,6 @@ export default function ExpensesScreen() {
   const [exportFrom, setExportFrom] = useState('');
   const [exportTo, setExportTo] = useState('');
   const [isExporting, setIsExporting] = useState(false);
-  const [canChangeFolder, setCanChangeFolder] = useState(false);
 
   const minDateFree = isoDaysAgo(90);
   const firstLoad = useRef(true);
@@ -251,11 +250,6 @@ export default function ExpensesScreen() {
     }
   };
 
-  const openExportSheet = async () => {
-    setExportSheetOpen(true);
-    setCanChangeFolder(await hasExportDirectory());
-  };
-
   const handleExport = async () => {
     setIsExporting(true);
     try {
@@ -267,24 +261,17 @@ export default function ExpensesScreen() {
         mimeType: exportFormat === 'csv' ? 'text/csv' : 'application/pdf',
       });
 
-      if (result.status === 'cancelled') {
-        toast.error('Export cancelled — no folder was chosen');
+      if (result.status === 'unavailable') {
+        toast.error('Sharing is not available on this device');
         return;
       }
 
       setExportSheetOpen(false);
-      toast.success(`Saved to ${result.location}`);
     } catch (error) {
       toast.error(getErrorMessage(error, 'Export failed'));
     } finally {
       setIsExporting(false);
     }
-  };
-
-  const handleChangeFolder = async () => {
-    await resetExportDirectory();
-    setCanChangeFolder(false);
-    toast.success('You will be asked for a folder on the next export');
   };
 
   const runSearch = async () => {
@@ -370,7 +357,7 @@ export default function ExpensesScreen() {
           </View>
           <View style={{ flexDirection: 'row', gap: spacing.s2 }}>
             <Pressable
-              onPress={() => (isPremium ? openExportSheet() : toast.error('Export is available on Premium'))}
+              onPress={() => (isPremium ? setExportSheetOpen(true) : toast.error('Export is available on Premium'))}
               style={[styles.iconBtn, { borderColor: colors.border, backgroundColor: colors.bgCard, opacity: isPremium ? 1 : 0.5 }]}
             >
               <Ionicons name={isPremium ? 'download-outline' : 'lock-closed-outline'} size={18} color={colors.textPrimary} />
@@ -670,15 +657,8 @@ export default function ExpensesScreen() {
           <DateField label="From (optional)" value={exportFrom} onChange={setExportFrom} clearable />
           <DateField label="To (optional)" value={exportTo} onChange={setExportTo} clearable />
           <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }}>
-            Leave dates empty to export all expenses.
+            Leave dates empty to export all expenses. You will pick where to save the file (Downloads, Drive, etc.).
           </Text>
-          {canChangeFolder ? (
-            <Pressable onPress={handleChangeFolder} hitSlop={6}>
-              <Text style={{ color: colors.accent, fontSize: fontSize.sm, fontFamily: fonts.semibold }}>
-                Change download folder
-              </Text>
-            </Pressable>
-          ) : null}
           <View style={{ flexDirection: 'row', gap: spacing.s2 }}>
             <Button title="Cancel" variant="outline" style={{ flex: 1 }} onPress={() => setExportSheetOpen(false)} />
             <Button title={isExporting ? 'Exporting…' : 'Export'} style={{ flex: 1 }} onPress={handleExport} loading={isExporting} />

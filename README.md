@@ -48,7 +48,7 @@ eas login                          # one-time (expo.dev account)
 eas build -p android --profile preview     # cloud build → downloadable .apk
 ```
 
-The `preview` and `production` profiles bake in `EXPO_PUBLIC_API_URL=https://api.thoughtexpense.nafiziqbal.com` — change that in `eas.json` to match your deployed API before building.
+The `preview` and `production` profiles bake in `EXPO_PUBLIC_API_URL=https://api.thought-expense.nafiziqbal.com` — change that in `eas.json` to match your deployed API before building.
 
 ### Local APK build (no cloud)
 
@@ -69,4 +69,4 @@ Or `eas build -p android --profile preview --local` once JDK + SDK are present.
 - **Receipt OCR** (tesseract.js) is web-only; the native app omits scan-to-text for now (server has no OCR endpoint).
 - **Password reset links** in email open the web frontend (`FRONTEND_URL`); the app covers the request-reset step.
 - Web's `DASHBOARD_REFRESH_EVENT` is replaced by refetch-on-focus (`useFocusEffect`).
-- Exports save directly to disk instead of opening a share sheet. Android writes to a folder granted once via the Storage Access Framework (picker defaults to Downloads, grant is remembered); iOS writes to the app's Documents directory, which `UIFileSharingEnabled` exposes in Files › On My iPhone › ThoughtExpense.
+- Exports open the system share sheet so you can save to Downloads, Drive, email, etc. — no folder permission prompt.
