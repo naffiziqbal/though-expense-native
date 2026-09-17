@@ -15,7 +15,8 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.thought-expense.nafiziqbal.com",
         "EXPO_PUBLIC_SENTRY_DSN": "https://918eaaf268a392a6c8b07d7ab1af0e2f@o4512057220136960.ingest.us.sentry.io/4512097420574720",
-        "NPM_CONFIG_MINIMUM_RELEASE_AGE": "0"
+        "NPM_CONFIG_MINIMUM_RELEASE_AGE": "0",
+        "EAS_NO_FROZEN_LOCKFILE": "1"
       }
     },
     "production": {
@@ -24,7 +25,8 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.thought-expense.nafiziqbal.com",
         "EXPO_PUBLIC_SENTRY_DSN": "https://918eaaf268a392a6c8b07d7ab1af0e2f@o4512057220136960.ingest.us.sentry.io/4512097420574720",
-        "NPM_CONFIG_MINIMUM_RELEASE_AGE": "0"
+        "NPM_CONFIG_MINIMUM_RELEASE_AGE": "0",
+        "EAS_NO_FROZEN_LOCKFILE": "1"
       }
     }
   },
