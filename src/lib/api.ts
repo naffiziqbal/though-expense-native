@@ -179,8 +179,11 @@ class ApiClient {
     return response.data;
   }
 
-  async changePassword(currentPassword: string, newPassword: string): Promise<{ success: boolean; message: string }> {
+  async changePassword(currentPassword: string, newPassword: string): Promise<{ success: boolean; message: string; data?: { token: string } }> {
     const response = await this.client.post('/api/auth/change-password', { currentPassword, newPassword });
+    if (response.data.success && response.data.data?.token) {
+      await this.setToken(response.data.data.token);
+    }
     return response.data;
   }
 
