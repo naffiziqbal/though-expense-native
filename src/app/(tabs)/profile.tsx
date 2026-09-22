@@ -10,6 +10,7 @@ import { Screen } from '../../components/ui/Screen';
 import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { getImageUrl } from '../../lib/utils';
+import { premiumPlansSubtitle } from '../../lib/subscription';
 import { useAuthStore } from '../../store/authStore';
 import { useOnboardingStore } from '../../store/onboardingStore';
 
@@ -43,7 +44,7 @@ export default function ProfileScreen() {
           icon: 'star',
           iconColor: '#EA580C',
           title: 'Premium Plans',
-          subtitle: isPremium ? 'You have Premium' : 'Upgrade to unlock all features',
+          subtitle: premiumPlansSubtitle(user),
           href: '/premium',
         },
       ],
@@ -106,6 +107,11 @@ export default function ProfileScreen() {
         <Text style={{ color: colors.textPrimary, fontSize: fontSize.lg, fontFamily: fonts.bold }}>
           {user?.name || 'User'}
         </Text>
+        {isPremium && user?.subscription?.summaryLine ? (
+          <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, marginTop: spacing.s2, textAlign: 'center' }}>
+            {user.subscription.summaryLine}
+          </Text>
+        ) : null}
         <Text style={{ color: colors.textMuted, fontSize: fontSize.xs, marginTop: 4 }}>
           ID: {user?.id?.slice(0, 8).toUpperCase()}
         </Text>

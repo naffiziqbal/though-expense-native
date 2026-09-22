@@ -9,6 +9,7 @@ import { fonts, fontSize, radius, spacing } from '../constants/theme';
 import { useTheme } from '../hooks/useTheme';
 import { api } from '../lib/api';
 import { billingAvailable, getPremiumOffering, purchasePremium, restorePurchases } from '../lib/billing';
+import { premiumPlansSubtitle } from '../lib/subscription';
 import { toast } from '../store/toastStore';
 import { useAuthStore } from '../store/authStore';
 
@@ -139,7 +140,7 @@ export default function PremiumScreen() {
         </Text>
         <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, textAlign: 'center' }}>
           {isPremium
-            ? "You're a Premium member. Enjoy all features!"
+            ? premiumPlansSubtitle(user)
             : 'Unlock the full power of your expense tracker'}
         </Text>
       </View>

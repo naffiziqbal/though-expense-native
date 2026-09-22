@@ -1,5 +1,16 @@
 // Ported from client/types/index.ts
 
+export interface UserSubscription {
+  plan: 'monthly' | 'yearly' | 'lifetime' | null;
+  planLabel: string | null;
+  status: 'active' | 'cancelled' | 'grace' | 'expired' | null;
+  premiumSince: string | null;
+  premiumUntil: string | null;
+  productId: string | null;
+  store: string | null;
+  summaryLine: string | null;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -8,6 +19,7 @@ export interface User {
   profilePicture?: string | null;
   profilePictureUrl?: string | null;
   isPremium: boolean;
+  subscription?: UserSubscription | null;
   createdAt: string;
 }
 
