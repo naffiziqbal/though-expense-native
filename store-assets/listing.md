@@ -7,7 +7,8 @@ source HTML for the images in `src/` (edit + re-render with headless Chrome).
 
 | File | Use | Spec |
 |---|---|---|
-| `play-icon-512.png` | App icon | 512×512 PNG |
+| `play-icon-512.png` | App icon (teal + white mark) | 512×512 PNG |
+| `play-icon-512-white.png` | App icon (white + black mark) | 512×512 PNG |
 | `feature-graphic.png` | Feature graphic | 1024×500 PNG |
 | `screenshot-01-brand.png` … `06-expenses.png` | Phone screenshots (in order) | 1080×2400 PNG |
 
@@ -114,4 +115,9 @@ CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 "$CHROME" --headless=new --hide-scrollbars --force-device-scale-factor=1 \
   --window-size=1080,2400 --virtual-time-budget=12000 \
   --screenshot=screenshot-02-home.png "file://$PWD/src/02-home.html"
+
+# Play icon (512×512)
+"$CHROME" --headless=new --hide-scrollbars --force-device-scale-factor=1 \
+  --window-size=512,512 --virtual-time-budget=8000 \
+  --screenshot=play-icon-512-white.png "file://$PWD/src/play-icon-512-white.html"
 ```

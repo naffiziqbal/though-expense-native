@@ -1,7 +1,7 @@
 {
   "name": "app",
   "main": "expo-router/entry",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "packageManager": "pnpm@10.33.0",
   "dependencies": {
     "@expo-google-fonts/instrument-sans": "^0.4.2",
@@ -15,6 +15,7 @@
     "axios": "^1.19.0",
     "date-fns": "^4.4.0",
     "expo": "~57.0.24",
+    "expo-build-properties": "~57.0.22",
     "expo-clipboard": "~57.0.2",
     "expo-constants": "~57.0.19",
     "expo-device": "~57.0.1",
