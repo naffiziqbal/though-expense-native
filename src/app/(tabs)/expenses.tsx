@@ -452,9 +452,9 @@ export default function ExpensesScreen() {
     try {
       const res = await api.searchExpenses(q);
       if (res.success) {
-        setSearchResults(res.data.expenses);
-        setSearchTotalAmount(res.data.totalAmount);
-        setSearchCurrency(res.data.currency);
+        setSearchResults(Array.isArray(res.data?.expenses) ? res.data.expenses : []);
+        setSearchTotalAmount(res.data?.totalAmount ?? 0);
+        setSearchCurrency(res.data?.currency ?? user?.currency ?? 'USD');
       }
     } catch (error) {
       const unreachable = isUnreachableError(error) || (await isCurrentlyOffline());
@@ -580,7 +580,7 @@ export default function ExpensesScreen() {
             onChangeText={setSearchQuery}
             onSubmitEditing={runSearch}
             returnKeyType="search"
-            placeholder='Search or try "coffee last month"'
+            placeholder="Search descriptions, categories…"
             placeholderTextColor={colors.textMuted}
             style={[styles.searchInput, { color: colors.textPrimary }]}
           />
@@ -669,7 +669,7 @@ export default function ExpensesScreen() {
             <EmptyState
               icon="search-outline"
               title="Nothing matched"
-              message="Try different words — I search meanings, not just exact text."
+              message="No expenses match that text. Try another word from the description or category."
             />
           }
           renderItem={() => (
