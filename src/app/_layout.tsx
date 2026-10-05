@@ -11,6 +11,7 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { PremiumWelcomeHost } from '../components/premium/PremiumWelcomeHost';
 import { TourOverlay } from '../components/tour/TourOverlay';
 import { OfflineBanner } from '../components/ui/OfflineBanner';
 import { ToastHost } from '../components/ui/ToastHost';
@@ -79,9 +80,8 @@ function RootLayout() {
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="budget" options={{ title: 'Monthly Budget' }} />
-          <Stack.Screen name="assistant" options={{ title: 'AI Advisor' }} />
-          <Stack.Screen name="goals" options={{ title: 'Savings Goals' }} />
+          <Stack.Screen name="assistant" options={{ headerShown: false }} />
+          <Stack.Screen name="goals" options={{ headerShown: false }} />
           <Stack.Screen name="recurring" options={{ title: 'Recurring' }} />
           <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
           <Stack.Screen name="profile-edit" options={{ title: 'Edit Profile' }} />
@@ -93,6 +93,7 @@ function RootLayout() {
         <OfflineBanner visible={isOffline} queuedCount={queuedCount} />
         {/* Above the Stack so the tour can dim the tab bar it points at. */}
         <TourOverlay />
+        <PremiumWelcomeHost />
         <ToastHost />
       </SafeAreaProvider>
     </GestureHandlerRootView>

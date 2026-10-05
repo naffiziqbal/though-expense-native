@@ -7,6 +7,22 @@ import * as Sharing from 'expo-sharing';
  */
 export type SaveExportResult = { status: 'shared' } | { status: 'unavailable' };
 
+export function base64FromArrayBuffer(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  let result = '';
+  for (let i = 0; i < bytes.length; i += 3) {
+    const b1 = bytes[i];
+    const b2 = i + 1 < bytes.length ? bytes[i + 1] : 0;
+    const b3 = i + 2 < bytes.length ? bytes[i + 2] : 0;
+    result += chars[b1 >> 2];
+    result += chars[((b1 & 3) << 4) | (b2 >> 4)];
+    result += i + 1 < bytes.length ? chars[((b2 & 15) << 2) | (b3 >> 6)] : '=';
+    result += i + 2 < bytes.length ? chars[b3 & 63] : '=';
+  }
+  return result;
+}
+
 interface SaveExportOptions {
   /** File contents, base64 encoded. */
   base64: string;

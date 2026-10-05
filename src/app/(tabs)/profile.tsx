@@ -1,170 +1,342 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import { useRouter, type Href } from 'expo-router';
-import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { BottomSheet } from '../../components/ui/BottomSheet';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
+import { DateField } from '../../components/ui/DateField';
 import { Screen } from '../../components/ui/Screen';
+import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
-import { getImageUrl } from '../../lib/utils';
+import { api, getErrorMessage } from '../../lib/api';
+import { base64FromArrayBuffer, saveExportedFile } from '../../lib/exportFile';
+import type { NotificationPreferences } from '../../lib/types';
+import { formatCurrency, getImageUrl } from '../../lib/utils';
 import { premiumPlansSubtitle } from '../../lib/subscription';
 import { useAuthStore } from '../../store/authStore';
 import { useOnboardingStore } from '../../store/onboardingStore';
+import { useThemeStore, type ThemeMode } from '../../store/themeStore';
+import { toast } from '../../store/toastStore';
 
-interface MenuItem {
-  icon: keyof typeof Ionicons.glyphMap;
-  iconColor: string;
-  title: string;
-  subtitle: string;
-  href?: Href;
-  comingSoon?: boolean;
-  onPress?: () => void;
+function themeLabel(mode: ThemeMode): string {
+  if (mode === 'system') return 'System';
+  if (mode === 'dark') return 'Dark';
+  return 'Light';
 }
 
+type NavRow = {
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  value?: string;
+  href: Href;
+  last?: boolean;
+};
+
 export default function ProfileScreen() {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const router = useRouter();
   const { user, logout } = useAuthStore();
   const startTour = useOnboardingStore((s) => s.start);
+  const themeMode = useThemeStore((s) => s.mode);
   const isPremium = user?.isPremium ?? false;
-  const [comingSoon, setComingSoon] = useState<string | null>(null);
+
+  const [prefs, setPrefs] = useState<NotificationPreferences | null>(null);
+  const [prefsLoading, setPrefsLoading] = useState(true);
+  const [prefsSaving, setPrefsSaving] = useState(false);
+  const [recurringCount, setRecurringCount] = useState(0);
+  const [budgetHint, setBudgetHint] = useState('Set up');
+  const [goalsHint, setGoalsHint] = useState('Create');
   const [logoutConfirm, setLogoutConfirm] = useState(false);
+  const [exportSheetOpen, setExportSheetOpen] = useState(false);
+  const [exportFormat, setExportFormat] = useState<'csv' | 'pdf'>('csv');
+  const [exportFrom, setExportFrom] = useState('');
+  const [exportTo, setExportTo] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
 
   const avatarUrl = getImageUrl(user?.profilePicture || user?.profilePictureUrl);
+  const shortId = user?.id?.slice(0, 8).toUpperCase() ?? '—';
 
-  const sections: { title: string; items: MenuItem[] }[] = [
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const currency = user?.currency || 'USD';
+        const [prefsRes, recurringRes, budgetRes, goalsRes] = await Promise.all([
+          api.getNotificationPreferences().catch(() => null),
+          api.getRecurringRules().catch(() => null),
+          api.getCurrentBudget().catch(() => null),
+          api.getGoals().catch(() => null),
+        ]);
+        if (!cancelled && prefsRes?.success) setPrefs(prefsRes.data);
+        if (!cancelled && recurringRes?.success) {
+          setRecurringCount(recurringRes.data.rules.filter((r) => r.isActive).length);
+        }
+        if (!cancelled) {
+          if (budgetRes?.success && budgetRes.data) {
+            setBudgetHint(`${formatCurrency(Math.max(0, budgetRes.data.remaining), currency)} left`);
+          } else {
+            setBudgetHint('Set up');
+          }
+          if (goalsRes?.success) {
+            const active = goalsRes.data.goals.filter((g) => g.status === 'active').length;
+            setGoalsHint(active > 0 ? `${active} active` : 'Create');
+          }
+        }
+      } finally {
+        if (!cancelled) setPrefsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.currency]);
+
+  const savePrefs = useCallback(
+    async (patch: Partial<NotificationPreferences>) => {
+      if (!prefs) return;
+      const prev = prefs;
+      setPrefs({ ...prefs, ...patch });
+      setPrefsSaving(true);
+      try {
+        const res = await api.updateNotificationPreferences(patch);
+        if (res.success) setPrefs(res.data);
+      } catch (error) {
+        setPrefs(prev);
+        toast.error(getErrorMessage(error, 'Could not save preference'));
+      } finally {
+        setPrefsSaving(false);
+      }
+    },
+    [prefs]
+  );
+
+  const copyId = async () => {
+    if (!user?.id) return;
+    await Clipboard.setStringAsync(user.id);
+    toast.success('User ID copied');
+  };
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const buffer = await api.exportExpenses(exportFormat, exportFrom || undefined, exportTo || undefined);
+      const result = await saveExportedFile({
+        base64: base64FromArrayBuffer(buffer),
+        baseName: `expenses-${new Date().toISOString().slice(0, 10)}`,
+        extension: exportFormat,
+        mimeType: exportFormat === 'csv' ? 'text/csv' : 'application/pdf',
+      });
+      if (result.status === 'unavailable') {
+        toast.error('Sharing is not available on this device');
+        return;
+      }
+      setExportSheetOpen(false);
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Export failed'));
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const moneyRows: NavRow[] = [
     {
-      title: 'GENERAL',
-      items: [
-        { icon: 'person', iconColor: '#2563EB', title: 'Edit Profile', subtitle: 'Update name & avatar', href: '/profile-edit' },
-        {
-          icon: 'star',
-          iconColor: '#EA580C',
-          title: 'Premium Plans',
-          subtitle: premiumPlansSubtitle(user),
-          href: '/premium',
-        },
-      ],
+      icon: 'bar-chart-outline',
+      title: 'Monthly budget',
+      value: budgetHint,
+      href: '/budget',
     },
     {
-      title: 'APP SETTINGS',
-      items: [
-        { icon: 'notifications', iconColor: '#DB2777', title: 'Notifications', subtitle: 'Alerts & daily reminder', href: '/notifications' },
-        { icon: 'repeat', iconColor: '#0284C7', title: 'Recurring', subtitle: 'Auto-log subscriptions & bills', href: '/recurring' },
-        { icon: 'wallet', iconColor: '#9333EA', title: 'Accounts', subtitle: 'Manage bank & cash', comingSoon: true },
-        { icon: 'phone-portrait', iconColor: '#475569', title: 'Device Settings', subtitle: 'Dark mode & appearance', href: '/device-settings' },
-        { icon: 'globe', iconColor: '#4F46E5', title: 'Currencies', subtitle: `${user?.currency || 'USD'} and more`, href: '/currencies' },
-        { icon: 'pie-chart', iconColor: '#0EA5A4', title: 'Monthly Budget', subtitle: 'Set limits & category budgets', href: '/budget' },
-        { icon: 'flag', iconColor: '#16A34A', title: 'Savings Goals', subtitle: 'Set targets & track progress', href: '/goals' },
-        { icon: 'sparkles', iconColor: '#D97706', title: 'AI Advisor', subtitle: 'Ask anything about your money', href: '/assistant' },
-        {
-          icon: 'help-buoy',
-          iconColor: '#0D9488',
-          title: 'Replay the tour',
-          subtitle: 'Let Penny walk you through it again',
-          // The overlay navigates to each step's screen itself.
-          onPress: startTour,
-        },
-      ],
+      icon: 'flag-outline',
+      title: 'Savings goals',
+      value: goalsHint,
+      href: '/goals',
     },
     {
-      title: 'SECURITY',
-      items: [{ icon: 'shield-checkmark', iconColor: '#059669', title: 'Security', subtitle: 'Change password', href: '/security' }],
+      icon: 'cash-outline',
+      title: 'Currency',
+      value: user?.currency || 'USD',
+      href: '/currencies',
+    },
+    {
+      icon: 'repeat',
+      title: 'Recurring',
+      value: recurringCount > 0 ? `${recurringCount} active` : 'Auto-log',
+      href: '/recurring',
+      last: true,
     },
   ];
 
+  const renderNavRow = (row: NavRow) => (
+    <Pressable
+      key={row.title}
+      onPress={() => router.push(row.href)}
+      style={[styles.row, !row.last && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}
+    >
+      <Ionicons name={row.icon} size={20} color={colors.textMuted} />
+      <Text style={[styles.rowTitle, { color: colors.textPrimary }]}>{row.title}</Text>
+      {row.value ? <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>{row.value}</Text> : null}
+      <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+    </Pressable>
+  );
+
   return (
     <Screen safeTop>
-      {/* Island header */}
-      <Card style={{ alignItems: 'center', paddingVertical: spacing.s6 }}>
-        <Pressable onPress={() => setLogoutConfirm(true)} style={styles.logoutBtn} hitSlop={8}>
-          <Ionicons name="log-out-outline" size={22} color={colors.textSecondary} />
-        </Pressable>
-        <View style={{ marginBottom: spacing.s3 }}>
-          <View style={[styles.avatar, { backgroundColor: colors.accent }]}>
-            {avatarUrl ? (
-              <Image source={{ uri: avatarUrl }} style={styles.avatarImage} contentFit="cover" />
-            ) : (
-              <Text style={styles.avatarInitial}>
-                {user?.name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || '?'}
-              </Text>
-            )}
-          </View>
-          <View
-            style={[
-              styles.planBadge,
-              { backgroundColor: isPremium ? (isDark ? 'rgba(220, 170, 40, 0.25)' : '#FEF3C7') : colors.border },
-            ]}
-          >
-            <Text style={{ fontSize: 10, fontFamily: fonts.bold, color: isPremium ? (isDark ? '#E8C866' : '#92400E') : colors.textSecondary }}>
-              {isPremium ? 'PREMIUM' : 'FREE'}
+      {/* Profile header */}
+      <View style={styles.headerRow}>
+        <View style={[styles.avatarSm, { backgroundColor: colors.accent }]}>
+          {avatarUrl ? (
+            <Image source={{ uri: avatarUrl }} style={styles.avatarSmImage} contentFit="cover" />
+          ) : (
+            <Text style={styles.avatarSmInitial}>
+              {user?.name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || '?'}
             </Text>
-          </View>
+          )}
         </View>
-        <Text style={{ color: colors.textPrimary, fontSize: fontSize.lg, fontFamily: fonts.bold }}>
-          {user?.name || 'User'}
-        </Text>
-        {isPremium && user?.subscription?.summaryLine ? (
-          <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, marginTop: spacing.s2, textAlign: 'center' }}>
-            {user.subscription.summaryLine}
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={{ color: colors.textPrimary, fontSize: fontSize.md, fontFamily: fonts.medium }} numberOfLines={1}>
+            {user?.name || 'User'}
           </Text>
-        ) : null}
-        <Text style={{ color: colors.textMuted, fontSize: fontSize.xs, marginTop: 4 }}>
-          ID: {user?.id?.slice(0, 8).toUpperCase()}
-        </Text>
+          <Pressable onPress={copyId} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+            <Text style={{ color: colors.textMuted, fontSize: fontSize.xs }}>ID {shortId}</Text>
+            <Ionicons name="copy-outline" size={12} color={colors.textMuted} />
+          </Pressable>
+        </View>
+        <Pressable
+          onPress={() => router.push('/profile-edit')}
+          style={[styles.editBtn, { borderColor: colors.border }]}
+        >
+          <Text style={{ color: colors.textPrimary, fontSize: fontSize.sm, fontFamily: fonts.medium }}>Edit</Text>
+        </Pressable>
+      </View>
+
+      {/* Plan card */}
+      <Card style={[styles.planCard, { borderColor: `${colors.accent}55`, backgroundColor: colors.bgCard }]}>
+        <Ionicons name="star" size={20} color={colors.accent} />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={{ color: colors.textPrimary, fontFamily: fonts.medium, fontSize: fontSize.sm }}>
+            {isPremium ? 'Premium plan' : 'Free plan'}
+          </Text>
+          <Text style={{ color: colors.textMuted, fontSize: fontSize.xs, marginTop: 2 }} numberOfLines={1}>
+            {isPremium ? user?.subscription?.summaryLine || premiumPlansSubtitle(user) : 'Upgrade to unlock all features'}
+          </Text>
+        </View>
+        {!isPremium ? (
+          <Pressable onPress={() => router.push('/premium')} style={[styles.seePlansBtn, { backgroundColor: colors.accent }]}>
+            <Text style={{ color: colors.onAccent, fontSize: fontSize.sm, fontFamily: fonts.medium }}>See plans</Text>
+          </Pressable>
+        ) : (
+          <Pressable onPress={() => router.push('/premium')} style={[styles.editBtn, { borderColor: colors.border }]}>
+            <Text style={{ color: colors.textPrimary, fontSize: fontSize.sm }}>Manage</Text>
+          </Pressable>
+        )}
       </Card>
 
-      {/* Menu sections */}
-      {sections.map((section) => (
-        <View key={section.title} style={{ gap: spacing.s2 }}>
-          <Text style={{ color: colors.textMuted, fontSize: fontSize.xs, fontFamily: fonts.semibold, letterSpacing: 1 }}>
-            {section.title}
-          </Text>
-          <Card padded={false}>
-            {section.items.map((item, i) => (
-              <Pressable
-                key={item.title}
-                onPress={() => {
-                  if (item.comingSoon) setComingSoon(item.title);
-                  else if (item.onPress) item.onPress();
-                  else if (item.href) router.push(item.href);
-                }}
-                style={[
-                  styles.menuRow,
-                  i < section.items.length - 1 && {
-                    borderBottomWidth: StyleSheet.hairlineWidth,
-                    borderBottomColor: colors.border,
-                  },
-                ]}
-              >
-                <View style={[styles.menuIcon, { backgroundColor: `${item.iconColor}1A` }]}>
-                  <Ionicons name={item.icon} size={20} color={item.iconColor} />
-                </View>
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={{ color: colors.textPrimary, fontFamily: fonts.semibold, fontSize: fontSize.md }}>{item.title}</Text>
-                  <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }} numberOfLines={1}>
-                    {item.subtitle}
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-              </Pressable>
-            ))}
-          </Card>
-        </View>
-      ))}
+      <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>Money</Text>
+      <Card padded={false}>{moneyRows.map(renderNavRow)}</Card>
 
-      {/* Coming soon sheet */}
-      <BottomSheet visible={!!comingSoon} onClose={() => setComingSoon(null)} title={comingSoon ? `${comingSoon} — Coming soon!` : ''}>
+      <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>Preferences</Text>
+      <Card padded={false}>
+        <View style={[styles.row, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}>
+          <Ionicons name="notifications-outline" size={20} color={colors.textMuted} />
+          <Text style={[styles.rowTitle, { color: colors.textPrimary }]}>Budget alerts</Text>
+          {prefsLoading ? (
+            <ActivityIndicator size="small" color={colors.accent} />
+          ) : (
+            <Switch
+              value={prefs?.budgetAlertsEnabled ?? false}
+              disabled={prefsSaving || !prefs?.pushEnabled}
+              onValueChange={(v) => savePrefs({ budgetAlertsEnabled: v })}
+              trackColor={{ true: colors.accent, false: colors.border }}
+              thumbColor={colors.bgCard}
+            />
+          )}
+        </View>
+        <View style={[styles.row, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}>
+          <Ionicons name="sparkles-outline" size={20} color={colors.textMuted} />
+          <Text style={[styles.rowTitle, { color: colors.textPrimary }]}>Weekly AI briefing</Text>
+          {prefsLoading ? (
+            <ActivityIndicator size="small" color={colors.accent} />
+          ) : (
+            <Switch
+              value={prefs?.pushEnabled ?? false}
+              disabled={prefsSaving}
+              onValueChange={(v) => savePrefs({ pushEnabled: v })}
+              trackColor={{ true: colors.accent, false: colors.border }}
+              thumbColor={colors.bgCard}
+            />
+          )}
+        </View>
+        <Pressable
+          onPress={() => router.push('/device-settings')}
+          style={[styles.row, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}
+        >
+          <Ionicons name="moon-outline" size={20} color={colors.textMuted} />
+          <Text style={[styles.rowTitle, { color: colors.textPrimary }]}>Appearance</Text>
+          <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>{themeLabel(themeMode)}</Text>
+          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+        </Pressable>
+        <Pressable onPress={() => router.push('/security')} style={styles.row}>
+          <Ionicons name="shield-checkmark-outline" size={20} color={colors.textMuted} />
+          <Text style={[styles.rowTitle, { color: colors.textPrimary }]}>Security</Text>
+          <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>Password</Text>
+          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+        </Pressable>
+      </Card>
+
+      <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>Data and help</Text>
+      <Card padded={false}>
+        <Pressable
+          onPress={() => setExportSheetOpen(true)}
+          style={[styles.row, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}
+        >
+          <Ionicons name="download-outline" size={20} color={colors.textMuted} />
+          <Text style={[styles.rowTitle, { color: colors.textPrimary }]}>Export data</Text>
+          <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>CSV</Text>
+          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+        </Pressable>
+        <Pressable onPress={startTour} style={styles.row}>
+          <Ionicons name="help-circle-outline" size={20} color={colors.textMuted} />
+          <Text style={[styles.rowTitle, { color: colors.textPrimary }]}>Replay the tour</Text>
+          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+        </Pressable>
+      </Card>
+
+      <Pressable onPress={() => setLogoutConfirm(true)} style={styles.logoutRow}>
+        <Ionicons name="log-out-outline" size={18} color={colors.error} />
+        <Text style={{ color: colors.error, fontFamily: fonts.medium, fontSize: fontSize.sm }}>Log out</Text>
+      </Pressable>
+
+      <BottomSheet visible={exportSheetOpen} onClose={() => setExportSheetOpen(false)} title="Export Expenses">
         <View style={{ gap: spacing.s3 }}>
-          <Text style={{ color: colors.textSecondary }}>This feature is under development. Check back soon!</Text>
-          <Button title="OK" onPress={() => setComingSoon(null)} />
+          <SegmentedControl
+            segments={[
+              { value: 'csv', label: 'CSV' },
+              { value: 'pdf', label: 'PDF' },
+            ]}
+            value={exportFormat}
+            onChange={(v) => setExportFormat(v as 'csv' | 'pdf')}
+          />
+          <DateField label="From (optional)" value={exportFrom} onChange={setExportFrom} clearable />
+          <DateField label="To (optional)" value={exportTo} onChange={setExportTo} clearable />
+          <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }}>
+            Leave dates empty to export all expenses. You will pick where to save the file.
+          </Text>
+          <View style={{ flexDirection: 'row', gap: spacing.s2 }}>
+            <Button title="Cancel" variant="outline" style={{ flex: 1 }} onPress={() => setExportSheetOpen(false)} />
+            <Button
+              title={isExporting ? 'Exporting…' : 'Export'}
+              style={{ flex: 1 }}
+              onPress={handleExport}
+              loading={isExporting}
+            />
+          </View>
         </View>
       </BottomSheet>
 
-      {/* Logout confirmation */}
       <BottomSheet visible={logoutConfirm} onClose={() => setLogoutConfirm(false)} title="Log out?">
         <View style={{ gap: spacing.s3 }}>
           <Text style={{ color: colors.textSecondary }}>You’ll need to sign in again to access your expenses.</Text>
@@ -188,49 +360,72 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  logoutBtn: {
-    position: 'absolute',
-    top: spacing.s3,
-    right: spacing.s3,
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.s3,
+    marginBottom: spacing.s4,
   },
-  avatar: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+  avatarSm: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  avatarImage: {
-    width: '100%',
-    height: '100%',
+  avatarSmImage: {
+    width: 56,
+    height: 56,
   },
-  avatarInitial: {
-    fontSize: 36,
-    fontFamily: fonts.bold,
+  avatarSmInitial: {
     color: '#fff',
+    fontSize: 22,
+    fontFamily: fonts.medium,
   },
-  planBadge: {
-    position: 'absolute',
-    bottom: -4,
-    right: -8,
-    borderRadius: radius.full,
-    paddingHorizontal: spacing.s2,
-    paddingVertical: 2,
+  editBtn: {
+    borderWidth: 1,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.s3,
+    paddingVertical: spacing.s2,
   },
-  menuRow: {
+  planCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.s3,
-    paddingHorizontal: spacing.s3,
-    paddingVertical: spacing.s3,
-    minHeight: 64,
+    borderWidth: 1,
+    marginBottom: spacing.s4,
   },
-  menuIcon: {
-    width: 40,
-    height: 40,
+  seePlansBtn: {
     borderRadius: radius.md,
+    paddingHorizontal: spacing.s3,
+    paddingVertical: spacing.s2,
+  },
+  sectionLabel: {
+    fontSize: fontSize.xs,
+    fontFamily: fonts.medium,
+    marginBottom: spacing.s2,
+    marginLeft: spacing.s1,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.s3,
+    paddingHorizontal: spacing.s4,
+    paddingVertical: spacing.s3,
+    minHeight: 52,
+  },
+  rowTitle: {
+    flex: 1,
+    fontSize: fontSize.sm,
+    fontFamily: fonts.medium,
+  },
+  logoutRow: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: spacing.s2,
+    paddingVertical: spacing.s4,
+    marginTop: spacing.s2,
   },
 });

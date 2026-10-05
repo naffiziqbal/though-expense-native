@@ -1,6 +1,37 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Keyboard, Platform, type KeyboardEvent } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+/** Current keyboard overlap height (0 when hidden), for layout max-height math. */
+export function useKeyboardHeight(subtractBottomInset = true): number {
+  const insets = useSafeAreaInsets();
+  const [height, setHeight] = useState(0);
+
+  useEffect(() => {
+    const liftFor = (keyboardHeight: number) =>
+      Math.max(0, keyboardHeight - (subtractBottomInset ? insets.bottom : 0));
+
+    const onShow = (e: KeyboardEvent) => {
+      setHeight(liftFor(e.endCoordinates?.height ?? 0));
+    };
+    const onHide = () => setHeight(0);
+
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      onShow
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      onHide
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [insets.bottom, subtractBottomInset]);
+
+  return height;
+}
 
 /**
  * Keyboard lift driven by React Native core Keyboard events.

@@ -10,6 +10,7 @@ import type { User } from '../lib/types';
 import { useNotificationStore } from './notificationStore';
 import { useOutboxStore } from './outboxStore';
 import { usePendingStore } from './pendingStore';
+import { celebratePremiumUpgrade } from './premiumWelcomeStore';
 
 interface AuthState {
   user: User | null;
@@ -36,12 +37,16 @@ export const useAuthStore = create<AuthState>()(
       error: null,
       _hasHydrated: false,
 
-      setUser: (user) =>
+      setUser: (user) => {
+        const prev = get().user;
+        const normalized = { ...user, isPremium: user.isPremium ?? false };
+        celebratePremiumUpgrade(prev?.isPremium, normalized.isPremium);
         set({
-          user: { ...user, isPremium: user.isPremium ?? false },
+          user: normalized,
           isAuthenticated: true,
           error: null,
-        }),
+        });
+      },
 
       clearUser: () => set({ user: null, isAuthenticated: false }),
 
@@ -89,8 +94,11 @@ export const useAuthStore = create<AuthState>()(
           set({ isLoading: true });
           const response = await api.getCurrentUser();
           if (response.success) {
+            const prev = get().user;
+            const next = { ...response.data.user, isPremium: response.data.user.isPremium ?? false };
+            celebratePremiumUpgrade(prev?.isPremium, next.isPremium);
             set({
-              user: response.data.user,
+              user: next,
               isAuthenticated: true,
               isLoading: false,
               error: null,

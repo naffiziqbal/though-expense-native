@@ -87,7 +87,6 @@ export default function PremiumScreen() {
       const active = await purchasePremium(pkg);
       if (active) {
         if (user) setUser({ ...user, isPremium: true });
-        toast.success('Welcome to Premium!');
         setTimeout(refreshUserFromServer, 2500);
       }
     } catch (err) {

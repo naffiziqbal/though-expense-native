@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Redirect, Tabs } from 'expo-router';
 import { useQuickActionRouting } from 'expo-quick-actions/router';
 import React, { useEffect } from 'react';
@@ -9,6 +8,13 @@ import { radius } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { useTourTarget } from '../../hooks/useTourTarget';
 import { TOUR_TARGETS } from '../../lib/tourSteps';
+import {
+  TabAddIcon,
+  TabExpensesIcon,
+  TabHomeIcon,
+  TabInsightsIcon,
+  TabSettingsIcon,
+} from '../../components/navigation/TabBarIcons';
 import { useAuthStore } from '../../store/authStore';
 import { useOnboardingStore } from '../../store/onboardingStore';
 
@@ -61,7 +67,7 @@ export default function TabsLayout() {
         options={{
           title: 'Home',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'home' : 'home-outline'} size={focused ? 27 : 24} color={color} />
+            <TabHomeIcon color={color} size={focused ? 27 : 24} focused={focused} />
           ),
         }}
       />
@@ -70,7 +76,7 @@ export default function TabsLayout() {
         options={{
           title: 'Expenses',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'card' : 'card-outline'} size={focused ? 27 : 24} color={color} />
+            <TabExpensesIcon color={color} size={focused ? 27 : 24} focused={focused} />
           ),
         }}
       />
@@ -87,7 +93,7 @@ export default function TabsLayout() {
             >
               <View {...addTarget} style={styles.fabTarget}>
                 <View style={[styles.fab, { backgroundColor: colors.accent, shadowColor: colors.accent }]}>
-                  <Ionicons name="add" size={32} color={colors.onAccent} />
+                  <TabAddIcon color={colors.onAccent} size={28} />
                 </View>
               </View>
             </Pressable>
@@ -100,7 +106,7 @@ export default function TabsLayout() {
           title: 'Insights',
           tabBarIcon: ({ color, focused }) => (
             <View {...insightsTarget}>
-              <Ionicons name={focused ? 'bar-chart' : 'bar-chart-outline'} size={focused ? 27 : 24} color={color} />
+              <TabInsightsIcon color={color} size={focused ? 27 : 24} focused={focused} />
             </View>
           ),
         }}
@@ -108,12 +114,13 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
+          title: 'Settings',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'person' : 'person-outline'} size={focused ? 27 : 24} color={color} />
+            <TabSettingsIcon color={color} size={focused ? 27 : 24} focused={focused} />
           ),
         }}
       />
+      <Tabs.Screen name="budget" options={{ href: null }} />
     </Tabs>
   );
 }
