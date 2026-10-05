@@ -30,7 +30,7 @@
           "data": [
             {
               "scheme": "https",
-              "host": "thoughtexpense.nafiziqbal.com",
+              "host": "thought-expense.nafiziqbal.com",
               "pathPrefix": "/"
             }
           ],

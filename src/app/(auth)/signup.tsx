@@ -23,7 +23,7 @@ function getPasswordStrength(pwd: string): 0 | 1 | 2 | 3 | 4 {
   return 4;
 }
 
-const WEBSITE = 'https://thoughtexpense.nafiziqbal.com';
+const WEBSITE = 'https://thought-expense.nafiziqbal.com';
 
 export default function SignupScreen() {
   const { colors } = useTheme();

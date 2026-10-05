@@ -61,17 +61,17 @@ PREMIUM ($6.99/month, $60/year, or $99 once for lifetime)
 
 YOUR DATA, YOUR CALL
 • Password reset by email code
-• Delete your account and all data anytime, in-app or at https://thoughtexpense.nafiziqbal.com/account-deletion
+• Delete your account and all data anytime, in-app or at https://thought-expense.nafiziqbal.com/account-deletion
 
 Questions? thoughtexpense@nafiziqbal.com
 ```
 
 ## URLs for Play Console
 
-- **Privacy policy:** https://thoughtexpense.nafiziqbal.com/privacy
-- **Account deletion (Data safety → account deletion):** https://thoughtexpense.nafiziqbal.com/account-deletion
+- **Privacy policy:** https://thought-expense.nafiziqbal.com/privacy
+- **Account deletion (Data safety → account deletion):** https://thought-expense.nafiziqbal.com/account-deletion
 - **Support email:** thoughtexpense@nafiziqbal.com
-- **Website:** https://thoughtexpense.nafiziqbal.com
+- **Website:** https://thought-expense.nafiziqbal.com
 
 ## Data safety form (declare)
 
