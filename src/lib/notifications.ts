@@ -1,20 +1,47 @@
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { captureError } from './sentry';
 
 export const DAILY_REMINDER_ID = 'daily-log-reminder';
 
-/** Foreground presentation. Set once, at module load, before any listener runs. */
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
-});
+type NotificationsModule = typeof import('expo-notifications');
+
+let notificationsMod: NotificationsModule | null | undefined;
+let handlerConfigured = false;
+
+/** Remote/push APIs are not available in Expo Go on Android (SDK 53+). */
+export function pushNotificationsAvailable(): boolean {
+  if (Constants.appOwnership === 'expo' && Platform.OS === 'android') return false;
+  return true;
+}
+
+function getNotifications(): NotificationsModule | null {
+  if (notificationsMod !== undefined) return notificationsMod;
+  if (!pushNotificationsAvailable()) {
+    notificationsMod = null;
+    return null;
+  }
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    notificationsMod = require('expo-notifications') as NotificationsModule;
+    if (!handlerConfigured) {
+      handlerConfigured = true;
+      notificationsMod.setNotificationHandler({
+        handleNotification: async () => ({
+          shouldShowBanner: true,
+          shouldShowList: true,
+          shouldPlaySound: false,
+          shouldSetBadge: false,
+        }),
+      });
+    }
+  } catch (error) {
+    captureError(error, { source: 'loadExpoNotifications' });
+    notificationsMod = null;
+  }
+  return notificationsMod;
+}
 
 function projectId(): string | undefined {
   const extra = Constants.expoConfig?.extra as { eas?: { projectId?: string } } | undefined;
@@ -23,7 +50,8 @@ function projectId(): string | undefined {
 
 /** Android needs an explicit channel or notifications arrive silently. */
 export async function ensureAndroidChannel(): Promise<void> {
-  if (Platform.OS !== 'android') return;
+  const Notifications = getNotifications();
+  if (!Notifications || Platform.OS !== 'android') return;
   await Notifications.setNotificationChannelAsync('default', {
     name: 'General',
     importance: Notifications.AndroidImportance.HIGH,
@@ -36,7 +64,8 @@ export async function ensureAndroidChannel(): Promise<void> {
 export type PermissionOutcome = 'granted' | 'denied' | 'unavailable';
 
 export async function getPermissionStatus(): Promise<PermissionOutcome> {
-  if (!Device.isDevice) return 'unavailable';
+  const Notifications = getNotifications();
+  if (!Notifications || !Device.isDevice) return 'unavailable';
   const { status } = await Notifications.getPermissionsAsync();
   return status === 'granted' ? 'granted' : 'denied';
 }
@@ -46,7 +75,8 @@ export async function getPermissionStatus(): Promise<PermissionOutcome> {
  * once per install, so we save it for an explicit opt-in.
  */
 export async function requestPermission(interactive: boolean): Promise<PermissionOutcome> {
-  if (!Device.isDevice) return 'unavailable';
+  const Notifications = getNotifications();
+  if (!Notifications || !Device.isDevice) return 'unavailable';
 
   const existing = await Notifications.getPermissionsAsync();
   if (existing.status === 'granted') return 'granted';
@@ -59,7 +89,8 @@ export async function requestPermission(interactive: boolean): Promise<Permissio
 
 /** Expo push token for this install, or null if unavailable/not permitted. */
 export async function getExpoPushToken(): Promise<string | null> {
-  if (!Device.isDevice) return null;
+  const Notifications = getNotifications();
+  if (!Notifications || !Device.isDevice) return null;
 
   const id = projectId();
   if (!id) {
@@ -82,6 +113,9 @@ export async function getExpoPushToken(): Promise<string | null> {
  * Local (not server-pushed) so it fires on time in any timezone and offline.
  */
 export async function scheduleDailyReminder(hour: number, minute: number): Promise<boolean> {
+  const Notifications = getNotifications();
+  if (!Notifications) return false;
+
   await cancelDailyReminder();
   if (!Device.isDevice) return false;
 
@@ -107,6 +141,8 @@ export async function scheduleDailyReminder(hour: number, minute: number): Promi
 }
 
 export async function cancelDailyReminder(): Promise<void> {
+  const Notifications = getNotifications();
+  if (!Notifications) return;
   try {
     await Notifications.cancelScheduledNotificationAsync(DAILY_REMINDER_ID);
   } catch {
@@ -129,4 +165,28 @@ export function routeForNotification(data: unknown): string | null {
   const screen = (data as { screen?: unknown }).screen;
   if (typeof screen !== 'string') return null;
   return SCREEN_ROUTES[screen] ?? null;
+}
+
+/** Cold-start notification tap (dev build / standalone only in Expo Go on Android). */
+export async function getLastNotificationResponse(): Promise<{ data: unknown } | null> {
+  const Notifications = getNotifications();
+  if (!Notifications) return null;
+  try {
+    const response = await Notifications.getLastNotificationResponseAsync();
+    if (!response) return null;
+    return { data: response.notification.request.content.data };
+  } catch {
+    return null;
+  }
+}
+
+export function addNotificationResponseListener(
+  listener: (data: unknown) => void
+): { remove: () => void } {
+  const Notifications = getNotifications();
+  if (!Notifications) return { remove: () => {} };
+  const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+    listener(response.notification.request.content.data);
+  });
+  return subscription;
 }

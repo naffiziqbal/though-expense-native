@@ -1,20 +1,29 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useSafeTop } from '../../hooks/useSafeTop';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { useTabScreenTopPadding } from '../../hooks/useSafeTop';
 import { CategoryIconBubble } from '../../components/CategoryIconBubble';
 import { BottomSheet } from '../../components/ui/BottomSheet';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
-import { CategoryBadge } from '../../components/ui/CategoryBadge';
 import { CategoryInput } from '../../components/ui/CategoryInput';
 import { DateField } from '../../components/ui/DateField';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Input } from '../../components/ui/Input';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import { SelectSheet } from '../../components/ui/SelectSheet';
-import { fonts, fontSize, radius, spacing } from '../../constants/theme';
+import { fonts, fontSize, radius, spacing, type ThemeColors } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { isCurrentlyOffline } from '../../hooks/useOutboxSync';
 import { api, getErrorMessage, isUnreachableError } from '../../lib/api';
@@ -27,12 +36,94 @@ import {
 } from '../../lib/expenseCache';
 import { saveExportedFile } from '../../lib/exportFile';
 import type { Expense, SearchResultExpense } from '../../lib/types';
-import { cleanExpenseDescription, formatCurrency, formatDate } from '../../lib/utils';
+import { groupExpensesByDay, type ExpenseDaySection } from '../../lib/homeDashboard';
+import { cleanExpenseDescription, formatCurrency, formatExpenseAmountParts } from '../../lib/utils';
 import { toast } from '../../store/toastStore';
 import { useAuthStore } from '../../store/authStore';
 import { usePendingExpenses } from '../../hooks/usePendingExpenses';
 
-const PAGE_SIZE = 10;
+/** Server max is 100; smaller pages feel smoother while scrolling. */
+const PAGE_SIZE = 40;
+
+type ExpenseRowItem = Pick<Expense, 'id' | 'description' | 'amount' | 'currency' | 'category' | 'date'>;
+
+function appendExpenses(prev: Expense[], batch: Expense[]): Expense[] {
+  if (!batch.length) return prev;
+  const seen = new Set(prev.map((e) => e.id));
+  const next = batch.filter((e) => !seen.has(e.id));
+  return next.length ? [...prev, ...next] : prev;
+}
+
+const ExpenseListRow = React.memo(function ExpenseListRow({
+  item,
+  onPress,
+  showDivider,
+  colors,
+}: {
+  item: ExpenseRowItem;
+  onPress: () => void;
+  showDivider: boolean;
+  colors: ThemeColors;
+}) {
+  const { code, value } = formatExpenseAmountParts(item.amount, item.currency);
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[
+        styles.txRow,
+        showDivider && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider },
+      ]}
+    >
+      <CategoryIconBubble category={item.category} size={40} />
+      <View style={styles.txMain}>
+        <Text style={[styles.txTitle, { color: colors.textPrimary }]} numberOfLines={1}>
+          {cleanExpenseDescription(item.description)}
+        </Text>
+        <Text style={[styles.txCategory, { color: colors.textMuted }]} numberOfLines={1}>
+          {item.category}
+        </Text>
+      </View>
+      <View style={styles.txRight}>
+        <Text style={[styles.txCurrency, { color: colors.textMuted }]}>{code}</Text>
+        <Text style={[styles.txAmount, { color: colors.textPrimary }]}>{value}</Text>
+      </View>
+    </Pressable>
+  );
+});
+
+const ExpenseDayBlock = React.memo(function ExpenseDayBlock({
+  section,
+  colors,
+  onPressRow,
+}: {
+  section: ExpenseDaySection;
+  colors: ThemeColors;
+  onPressRow: (item: ExpenseRowItem) => void;
+}) {
+  const { code, value } = formatExpenseAmountParts(section.total, section.currency);
+  return (
+    <View style={styles.dayBlock}>
+      <View style={styles.dayHeader}>
+        <Text style={[styles.dayLabel, { color: colors.textSecondary }]}>{section.label}</Text>
+        <View style={styles.dayTotalCol}>
+          <Text style={[styles.txCurrency, { color: colors.textMuted }]}>{code}</Text>
+          <Text style={[styles.dayTotal, { color: colors.textPrimary }]}>{value}</Text>
+        </View>
+      </View>
+      <Card padded={false} style={styles.dayCard}>
+        {section.data.map((item, index) => (
+          <ExpenseListRow
+            key={item.id}
+            item={item}
+            colors={colors}
+            showDivider={index < section.data.length - 1}
+            onPress={() => onPressRow(item)}
+          />
+        ))}
+      </Card>
+    </View>
+  );
+});
 
 function isoDaysAgo(days: number): string {
   const d = new Date();
@@ -59,15 +150,16 @@ function base64FromArrayBuffer(buffer: ArrayBuffer): string {
 export default function ExpensesScreen() {
   const { colors } = useTheme();
   const router = useRouter();
-  const topInset = useSafeTop();
+  const tabTopPadding = useTabScreenTopPadding();
   const { user } = useAuthStore();
   const pending = usePendingExpenses();
   const isPremium = user?.isPremium ?? false;
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
   const [categories, setCategories] = useState<string[]>([]);
   const [showingCached, setShowingCached] = useState(false);
   const [cacheSavedAt, setCacheSavedAt] = useState<number | null>(null);
@@ -98,35 +190,59 @@ export default function ExpensesScreen() {
   const [isExporting, setIsExporting] = useState(false);
 
   const minDateFree = isoDaysAgo(90);
-  const firstLoad = useRef(true);
+  const firstFocus = useRef(true);
   const fetchGen = useRef(0);
+  const hasMoreRef = useRef(true);
+  const loadingMoreRef = useRef(false);
+  const expensesLengthRef = useRef(0);
+  const prevFiltersKey = useRef<string | null>(null);
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const filtersKey = useMemo(
+    () => `${filters.category}|${filters.startDate}|${filters.endDate}`,
+    [filters.category, filters.endDate, filters.startDate]
+  );
 
-  const fetchExpenses = useCallback(
-    async (targetPage: number, activeFilters: typeof filters) => {
-      const gen = ++fetchGen.current;
+  useEffect(() => {
+    expensesLengthRef.current = expenses.length;
+  }, [expenses.length]);
+
+  const fetchPage = useCallback(
+    async (mode: 'refresh' | 'append', activeFilters: typeof filters) => {
       const userId = user?.id;
       const cacheFilters = {
         category: activeFilters.category,
         startDate: activeFilters.startDate,
         endDate: activeFilters.endDate,
       };
-      const cached = userId ? await readExpenseCache(userId, targetPage, cacheFilters) : null;
-      if (gen !== fetchGen.current) return;
 
-      if (cached) {
-        setExpenses(cached.expenses);
-        setTotal(cached.total);
-        setShowingCached(true);
-        setCacheSavedAt(cached.savedAt);
-        setIsLoading(false);
+      let refreshGen = 0;
+      let cached: Awaited<ReturnType<typeof readExpenseCache>> = null;
+
+      if (mode === 'refresh') {
+        refreshGen = ++fetchGen.current;
+        cached = userId ? await readExpenseCache(userId, 1, cacheFilters) : null;
+        if (refreshGen !== fetchGen.current) return;
+
+        if (cached && expensesLengthRef.current === 0) {
+          setExpenses(cached.expenses);
+          setTotal(cached.total);
+          hasMoreRef.current = cached.expenses.length < cached.total;
+          setShowingCached(true);
+          setCacheSavedAt(cached.savedAt);
+          setIsLoading(false);
+        } else if (expensesLengthRef.current === 0) {
+          setIsLoading(true);
+        }
       } else {
-        setIsLoading(true);
+        if (loadingMoreRef.current || isLoading || !hasMoreRef.current) return;
+        loadingMoreRef.current = true;
+        setIsLoadingMore(true);
       }
 
+      const appendGen = fetchGen.current;
+      const offset = mode === 'refresh' ? 0 : expensesLengthRef.current;
+
       try {
-        const offset = (targetPage - 1) * PAGE_SIZE;
         const startDate =
           activeFilters.startDate && !isPremium && activeFilters.startDate < minDateFree
             ? minDateFree
@@ -138,35 +254,67 @@ export default function ExpensesScreen() {
           limit: PAGE_SIZE,
           offset,
         });
-        if (gen !== fetchGen.current) return;
+
+        if (mode === 'refresh') {
+          if (refreshGen !== fetchGen.current) return;
+        } else if (appendGen !== fetchGen.current) {
+          return;
+        }
+
         if (response.success) {
-          setExpenses(response.data.expenses);
+          const batch = response.data.expenses;
+          hasMoreRef.current = response.data.pagination.hasMore;
           setTotal(response.data.pagination.total);
           setShowingCached(false);
           setCacheSavedAt(null);
-          if (userId) {
-            await writeExpenseCache(userId, targetPage, cacheFilters, {
-              expenses: response.data.expenses,
-              total: response.data.pagination.total,
-              categories: [],
-            });
+
+          if (mode === 'refresh') {
+            setExpenses(batch);
+            if (userId) {
+              await writeExpenseCache(userId, 1, cacheFilters, {
+                expenses: batch,
+                total: response.data.pagination.total,
+                categories: [],
+              });
+            }
+          } else {
+            setExpenses((prev) => appendExpenses(prev, batch));
           }
         }
       } catch (error) {
-        if (gen !== fetchGen.current) return;
-        if (cached) return;
-        setExpenses([]);
-        setTotal(0);
-        const unreachable = isUnreachableError(error) || (await isCurrentlyOffline());
-        setShowingCached(unreachable);
-        setCacheSavedAt(null);
-        if (!unreachable) toast.error('Failed to fetch expenses');
+        if (mode === 'refresh') {
+          if (refreshGen !== fetchGen.current) return;
+          if (cached) return;
+          setExpenses([]);
+          setTotal(0);
+          hasMoreRef.current = false;
+          const unreachable = isUnreachableError(error) || (await isCurrentlyOffline());
+          setShowingCached(unreachable);
+          setCacheSavedAt(null);
+          if (!unreachable) toast.error('Failed to fetch expenses');
+        }
       } finally {
-        if (gen === fetchGen.current) setIsLoading(false);
+        if (mode === 'refresh') {
+          if (refreshGen === fetchGen.current) setIsLoading(false);
+        } else {
+          loadingMoreRef.current = false;
+          setIsLoadingMore(false);
+        }
       }
     },
-    [isPremium, minDateFree, user?.id]
+    [isLoading, isPremium, minDateFree, user?.id]
   );
+
+  const loadMore = useCallback(() => {
+    void fetchPage('append', filters);
+  }, [fetchPage, filters]);
+
+  const onPullRefresh = useCallback(async () => {
+    setRefreshing(true);
+    hasMoreRef.current = true;
+    await fetchPage('refresh', filters);
+    setRefreshing(false);
+  }, [fetchPage, filters]);
 
   const fetchCategories = useCallback(async () => {
     const userId = user?.id;
@@ -186,22 +334,35 @@ export default function ExpensesScreen() {
     }
   }, [user?.id]);
 
+  useEffect(() => {
+    if (prevFiltersKey.current === null) {
+      prevFiltersKey.current = filtersKey;
+      return;
+    }
+    if (prevFiltersKey.current === filtersKey) return;
+    prevFiltersKey.current = filtersKey;
+    fetchGen.current += 1;
+    hasMoreRef.current = true;
+    setExpenses([]);
+    expensesLengthRef.current = 0;
+    void fetchPage('refresh', filters);
+  }, [fetchPage, filters, filtersKey]);
+
   useFocusEffect(
     useCallback(() => {
-      fetchExpenses(page, filters);
-      if (firstLoad.current) {
-        fetchCategories();
-        firstLoad.current = false;
+      if (firstFocus.current) {
+        firstFocus.current = false;
+        void fetchCategories();
+        void fetchPage('refresh', filters);
       }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [page, filters])
+    }, [fetchCategories, fetchPage, filters])
   );
 
   useEffect(() => {
     if (filterSheetOpen) setDraftFilters(filters);
   }, [filterSheetOpen, filters]);
 
-  const handleEdit = (expense: Expense) => {
+  const handleEdit = useCallback((expense: Expense) => {
     setSelectedExpense(expense);
     setEditForm({
       description: expense.description,
@@ -210,7 +371,15 @@ export default function ExpensesScreen() {
       date: expense.date.split('T')[0],
     });
     setEditSheetOpen(true);
-  };
+  }, []);
+
+  const handlePressRow = useCallback(
+    (item: ExpenseRowItem) => {
+      if (item.id.startsWith('pending:')) return;
+      handleEdit(item as Expense);
+    },
+    [handleEdit]
+  );
 
   const handleSaveEdit = async () => {
     if (!selectedExpense) return;
@@ -229,7 +398,8 @@ export default function ExpensesScreen() {
       if (response.success) {
         toast.success('Expense updated successfully');
         setEditSheetOpen(false);
-        fetchExpenses(page, filters);
+        const updated = response.data.expense;
+        setExpenses((prev) => prev.map((e) => (e.id === selectedExpense.id ? updated : e)));
       }
     } catch (error) {
       toast.error(getErrorMessage(error, 'Failed to update expense'));
@@ -243,7 +413,8 @@ export default function ExpensesScreen() {
       if (response.success) {
         toast.success('Expense deleted successfully');
         setDeleteSheetOpen(false);
-        fetchExpenses(page, filters);
+        setExpenses((prev) => prev.filter((e) => e.id !== selectedExpense.id));
+        setTotal((t) => Math.max(0, t - 1));
       }
     } catch (error) {
       toast.error(getErrorMessage(error, 'Failed to delete expense'));
@@ -326,26 +497,44 @@ export default function ExpensesScreen() {
       createdAt: p.createdAt,
       updatedAt: p.createdAt,
     }));
-  const displayExpenses = page === 1 ? [...pendingExpenses, ...expenses] : expenses;
+  const displayExpenses = useMemo(() => {
+    const pendingIds = new Set(pendingExpenses.map((p) => p.id));
+    return [...pendingExpenses, ...expenses.filter((e) => !pendingIds.has(e.id))];
+  }, [expenses, pendingExpenses]);
 
-  return (
-    <View style={{ flex: 1, backgroundColor: colors.bgPrimary, paddingTop: topInset + spacing.s3 }}>
-      <View style={styles.container}>
-        {/* Free-tier banner */}
-        {!isPremium ? (
-          <Pressable onPress={() => router.push('/premium')}>
-            <View style={[styles.freeBanner, { backgroundColor: colors.accentSoft }]}>
-              <Text style={{ color: colors.accent, fontSize: fontSize.xs }}>
-                Viewing past 3 months. <Text style={{ fontFamily: fonts.bold, textDecorationLine: 'underline' }}>Upgrade to Premium</Text> for full history.
-              </Text>
-            </View>
-          </Pressable>
-        ) : null}
+  const expenseSections = useMemo(() => groupExpensesByDay(displayExpenses), [displayExpenses]);
+  const chipCategories = useMemo(() => categories.filter(Boolean).slice(0, 8), [categories]);
 
-        {/* Header */}
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={[styles.title, { color: colors.textPrimary }]}>All Expenses</Text>
+  const selectCategoryChip = (category: string) => {
+    setFilters((f) => ({ ...f, category }));
+  };
+
+  const listFooter =
+    isLoadingMore && !searchActive ? (
+      <View style={styles.loadMoreFooter}>
+        <ActivityIndicator size="small" color={colors.accent} />
+      </View>
+    ) : null;
+
+  const listContentPadding = { paddingBottom: spacing.s3, gap: spacing.s3 };
+
+  const listHeader = (
+    <View style={[styles.listHeader, { paddingTop: tabTopPadding }]}>
+      {!isPremium ? (
+        <Pressable onPress={() => router.push('/premium')}>
+          <View style={[styles.freeBanner, { backgroundColor: colors.accentSoft }]}>
+            <Text style={{ color: colors.accent, fontSize: fontSize.xs }}>
+              Viewing past 3 months.{' '}
+              <Text style={{ fontFamily: fonts.bold, textDecorationLine: 'underline' }}>Upgrade to Premium</Text> for
+              full history.
+            </Text>
+          </View>
+        </Pressable>
+      ) : null}
+
+      <View style={styles.headerRow}>
+          <View style={styles.headerTitleCol}>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>Expenses</Text>
             <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }}>
               {total} transaction{total !== 1 ? 's' : ''}
             </Text>
@@ -355,20 +544,20 @@ export default function ExpensesScreen() {
               </Text>
             ) : null}
           </View>
-          <View style={{ flexDirection: 'row', gap: spacing.s2 }}>
+          <View style={styles.headerActions}>
             <Pressable
               onPress={() => (isPremium ? setExportSheetOpen(true) : toast.error('Export is available on Premium'))}
-              style={[styles.iconBtn, { borderColor: colors.border, backgroundColor: colors.bgCard, opacity: isPremium ? 1 : 0.5 }]}
+              style={[styles.iconSquare, { borderColor: colors.border, backgroundColor: colors.bgCard, opacity: isPremium ? 1 : 0.5 }]}
+              accessibilityLabel="Export"
             >
-              <Ionicons name={isPremium ? 'download-outline' : 'lock-closed-outline'} size={18} color={colors.textPrimary} />
-              <Text style={{ color: colors.textPrimary, fontSize: fontSize.sm, fontFamily: fonts.medium }}>Export</Text>
+              <Ionicons name={isPremium ? 'download-outline' : 'lock-closed-outline'} size={20} color={colors.textPrimary} />
             </Pressable>
             <Pressable
               onPress={() => setFilterSheetOpen(true)}
-              style={[styles.iconBtn, { borderColor: colors.border, backgroundColor: colors.bgCard }]}
+              style={[styles.iconSquare, { borderColor: colors.border, backgroundColor: colors.bgCard }]}
+              accessibilityLabel="Filter"
             >
-              <Ionicons name="filter" size={18} color={colors.textPrimary} />
-              <Text style={{ color: colors.textPrimary, fontSize: fontSize.sm, fontFamily: fonts.medium }}>Filter</Text>
+              <Ionicons name="options-outline" size={20} color={colors.textPrimary} />
               {activeFiltersCount > 0 ? (
                 <View style={[styles.filterBadge, { backgroundColor: colors.accentSoft }]}>
                   <Text style={{ color: colors.accent, fontSize: 10, fontFamily: fonts.bold }}>{activeFiltersCount}</Text>
@@ -379,14 +568,19 @@ export default function ExpensesScreen() {
         </View>
 
         {/* Natural-language search */}
-        <View style={[styles.searchBar, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
+        <View
+          style={[
+            styles.searchBar,
+            { backgroundColor: colors.bgCard, borderColor: colors.border, borderRadius: radius.lg },
+          ]}
+        >
           <Ionicons name="search" size={18} color={colors.textMuted} />
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
             onSubmitEditing={runSearch}
             returnKeyType="search"
-            placeholder='Search anything — "coffee last month", "over 500"'
+            placeholder='Search or try "coffee last month"'
             placeholderTextColor={colors.textMuted}
             style={[styles.searchInput, { color: colors.textPrimary }]}
           />
@@ -410,55 +604,98 @@ export default function ExpensesScreen() {
           </View>
         ) : null}
 
-        {/* List */}
-        {searchActive ? (
-          searchResults!.length === 0 ? (
+        {!searchActive ? (
+          <ScrollView
+            horizontal
+            nestedScrollEnabled
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipRow}
+            style={styles.chipScroll}
+          >
+            <Pressable
+              onPress={() => selectCategoryChip('')}
+              style={[
+                styles.chip,
+                !filters.category
+                  ? { backgroundColor: colors.accent, borderColor: colors.accent }
+                  : { backgroundColor: colors.bgCard, borderColor: colors.border },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  { color: !filters.category ? colors.onAccent : colors.textSecondary },
+                ]}
+              >
+                All
+              </Text>
+            </Pressable>
+            {chipCategories.map((cat) => {
+              const active = filters.category === cat;
+              return (
+                <Pressable
+                  key={cat}
+                  onPress={() => selectCategoryChip(cat)}
+                  style={[
+                    styles.chip,
+                    active
+                      ? { backgroundColor: colors.accent, borderColor: colors.accent }
+                      : { backgroundColor: colors.bgCard, borderColor: colors.border },
+                  ]}
+                >
+                  <Text style={[styles.chipText, { color: active ? colors.onAccent : colors.textSecondary }]} numberOfLines={1}>
+                    {cat}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        ) : null}
+    </View>
+  );
+
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.bgPrimary }}>
+      {searchActive ? (
+        <FlatList
+          style={styles.list}
+          data={searchResults?.length ? [{ key: 'results' }] : []}
+          keyExtractor={(item) => item.key}
+          ListHeaderComponent={listHeader}
+          contentContainerStyle={[styles.pagePad, { paddingBottom: spacing.s3 }]}
+          contentInsetAdjustmentBehavior="never"
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
             <EmptyState
               icon="search-outline"
               title="Nothing matched"
               message="Try different words — I search meanings, not just exact text."
             />
-          ) : (
-            <Card padded={false} style={{ flex: 1 }}>
-              <FlatList
-                data={searchResults!}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item, index }) => (
-                  <Pressable
-                    onPress={() => handleEdit(item as unknown as Expense)}
-                    style={[
-                      styles.txRow,
-                      index < searchResults!.length - 1 && {
-                        borderBottomWidth: StyleSheet.hairlineWidth,
-                        borderBottomColor: colors.border,
-                      },
-                    ]}
-                  >
-                    <CategoryIconBubble category={item.category} size={44} />
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text style={{ color: colors.textPrimary, fontFamily: fonts.bold }} numberOfLines={1}>
-                        {cleanExpenseDescription(item.description)}
-                      </Text>
-                      <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, marginTop: 2 }}>
-                        {formatDate(item.date)}
-                      </Text>
-                    </View>
-                    <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                      <Text style={{ color: colors.textPrimary, fontFamily: fonts.bold }}>
-                        -{formatCurrency(item.amount, item.currency)}
-                      </Text>
-                      <CategoryBadge category={item.category} />
-                    </View>
-                  </Pressable>
-                )}
-              />
+          }
+          renderItem={() => (
+            <Card padded={false} style={styles.searchListCard}>
+              {searchResults!.map((item, index) => (
+                <ExpenseListRow
+                  key={item.id}
+                  item={item}
+                  colors={colors}
+                  showDivider={index < searchResults!.length - 1}
+                  onPress={() => handleEdit(item as unknown as Expense)}
+                />
+              ))}
             </Card>
-          )
-        ) : isLoading && displayExpenses.length === 0 ? (
+          )}
+        />
+      ) : isLoading && displayExpenses.length === 0 ? (
+        <View style={[styles.pagePad, { flex: 1, paddingBottom: spacing.s3 }]}>
+          {listHeader}
           <View style={styles.center}>
             <ActivityIndicator size="large" color={colors.accent} />
           </View>
-        ) : displayExpenses.length === 0 ? (
+        </View>
+      ) : displayExpenses.length === 0 ? (
+        <View style={[styles.pagePad, { flex: 1, paddingBottom: spacing.s3 }]}>
+          {listHeader}
           <EmptyState
             icon={showingCached ? 'cloud-offline-outline' : 'receipt-outline'}
             title={showingCached ? 'Nothing saved on this device' : 'No expenses found'}
@@ -468,69 +705,31 @@ export default function ExpensesScreen() {
                 : 'Try adjusting your filters or add new expenses'
             }
           />
-        ) : (
-          <Card padded={false} style={{ flex: 1 }}>
-            <FlatList
-              data={displayExpenses}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item, index }) => (
-                <Pressable
-                  onPress={() => {
-                    if (item.id.startsWith('pending:')) return;
-                    handleEdit(item);
-                  }}
-                  style={[
-                    styles.txRow,
-                    index < displayExpenses.length - 1 && {
-                      borderBottomWidth: StyleSheet.hairlineWidth,
-                      borderBottomColor: colors.border,
-                    },
-                  ]}
-                >
-                  <CategoryIconBubble category={item.category} size={44} />
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={{ color: colors.textPrimary, fontFamily: fonts.bold }} numberOfLines={1}>
-                      {cleanExpenseDescription(item.description)}
-                    </Text>
-                    <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, marginTop: 2 }}>
-                      {formatDate(item.date)}
-                    </Text>
-                  </View>
-                  <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                    <Text style={{ color: colors.textPrimary, fontFamily: fonts.bold }}>
-                      -{formatCurrency(item.amount, item.currency)}
-                    </Text>
-                    <CategoryBadge category={item.category} />
-                  </View>
-                </Pressable>
-              )}
-            />
-          </Card>
-        )}
-
-        {/* Pagination */}
-        {!searchActive && !isLoading && total > 0 ? (
-          <View style={styles.pagination}>
-            <Pressable
-              onPress={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
-              style={[styles.pageBtn, { borderColor: colors.border, backgroundColor: colors.bgCard, opacity: page <= 1 ? 0.4 : 1 }]}
-            >
-              <Ionicons name="chevron-back" size={18} color={colors.textPrimary} />
-            </Pressable>
-            <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }}>
-              Page {page} of {totalPages}
-            </Text>
-            <Pressable
-              onPress={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages}
-              style={[styles.pageBtn, { borderColor: colors.border, backgroundColor: colors.bgCard, opacity: page >= totalPages ? 0.4 : 1 }]}
-            >
-              <Ionicons name="chevron-forward" size={18} color={colors.textPrimary} />
-            </Pressable>
-          </View>
-        ) : null}
-      </View>
+        </View>
+      ) : (
+        <FlatList
+          style={styles.list}
+          data={expenseSections}
+          keyExtractor={(section) => section.dayKey}
+          contentContainerStyle={[styles.pagePad, listContentPadding, { paddingBottom: spacing.s3 }]}
+          ListHeaderComponent={listHeader}
+          ListFooterComponent={listFooter}
+          contentInsetAdjustmentBehavior="never"
+          showsVerticalScrollIndicator={false}
+          initialNumToRender={5}
+          maxToRenderPerBatch={6}
+          windowSize={7}
+          removeClippedSubviews
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.35}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onPullRefresh} tintColor={colors.accent} />
+          }
+          renderItem={({ item: section }) => (
+            <ExpenseDayBlock section={section} colors={colors} onPressRow={handlePressRow} />
+          )}
+        />
+      )}
 
       {/* Filters sheet */}
       <BottomSheet visible={filterSheetOpen} onClose={() => setFilterSheetOpen(false)} title="Filter expenses">
@@ -568,7 +767,6 @@ export default function ExpensesScreen() {
               style={{ flex: 1 }}
               onPress={() => {
                 setFilters({ category: '', startDate: '', endDate: '' });
-                setPage(1);
                 setFilterSheetOpen(false);
               }}
             />
@@ -577,7 +775,6 @@ export default function ExpensesScreen() {
               style={{ flex: 1 }}
               onPress={() => {
                 setFilters(draftFilters);
-                setPage(1);
                 setFilterSheetOpen(false);
               }}
             />
@@ -670,18 +867,50 @@ export default function ExpensesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  pagePad: {
     paddingHorizontal: spacing.s4,
+  },
+  listHeader: {
     gap: spacing.s3,
+    paddingBottom: spacing.s3,
+  },
+  searchListCard: {
+    flex: 1,
+    minHeight: 0,
+    overflow: 'hidden',
+    borderRadius: 20,
+  },
+  list: {
+    flex: 1,
+  },
+  dayBlock: {
+    gap: spacing.s2,
+  },
+  dayCard: {
+    overflow: 'hidden',
+    borderRadius: 16,
+  },
+  dayTotalCol: {
+    alignItems: 'flex-end',
+    gap: 1,
+  },
+  headerTitleCol: {
+    flex: 1,
+    minWidth: 0,
+    paddingRight: spacing.s2,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: spacing.s2,
+    flexShrink: 0,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.s2,
-    borderWidth: 1,
-    borderRadius: radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: spacing.s3,
+    minHeight: 44,
   },
   searchInput: {
     flex: 1,
@@ -696,22 +925,59 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-end',
+    alignItems: 'flex-start',
   },
   title: {
-    fontSize: fontSize.xl,
+    fontSize: 26,
     fontFamily: fonts.bold,
+    letterSpacing: -0.3,
   },
-  iconBtn: {
+  iconSquare: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  chipScroll: {
+    flexGrow: 0,
+  },
+  chipRow: {
+    gap: 8,
+    paddingRight: spacing.s2,
+  },
+  chip: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: radius.full,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    maxWidth: 160,
+  },
+  chipText: {
+    fontSize: fontSize.sm,
+    fontFamily: fonts.semibold,
+  },
+  dayHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    borderWidth: 1,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.s3,
-    paddingVertical: spacing.s2,
+    justifyContent: 'space-between',
+    paddingTop: spacing.s2,
+    paddingBottom: spacing.s2,
+  },
+  dayLabel: {
+    fontSize: fontSize.md,
+    fontFamily: fonts.semibold,
+  },
+  dayTotal: {
+    fontSize: fontSize.md,
+    fontFamily: fonts.bold,
   },
   filterBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
     minWidth: 18,
     height: 18,
     borderRadius: 9,
@@ -728,20 +994,43 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.s3,
-    paddingHorizontal: spacing.s3,
-    paddingVertical: spacing.s3,
+    paddingHorizontal: spacing.s4,
+    paddingVertical: 13,
+    minHeight: 44,
   },
-  pagination: {
-    flexDirection: 'row',
+  txMain: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  txTitle: {
+    fontFamily: fonts.semibold,
+    fontSize: 14,
+  },
+  txRight: {
+    alignItems: 'flex-end',
+    gap: 2,
+    flexShrink: 0,
+    minWidth: 72,
+  },
+  txAmount: {
+    fontFamily: fonts.bold,
+    fontSize: 16,
+    textAlign: 'right',
+    letterSpacing: -0.2,
+  },
+  txCategory: {
+    fontSize: fontSize.sm,
+    marginTop: 2,
+  },
+  txCurrency: {
+    fontSize: 11,
+    fontFamily: fonts.medium,
+    textAlign: 'right',
+  },
+  loadMoreFooter: {
+    paddingVertical: spacing.s4,
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.s3,
-    paddingBottom: spacing.s2,
-  },
-  pageBtn: {
-    borderWidth: 1,
-    borderRadius: radius.md,
-    padding: spacing.s2,
   },
   deletePreview: {
     borderRadius: radius.md,

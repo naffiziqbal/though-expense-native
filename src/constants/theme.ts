@@ -21,9 +21,9 @@ export const palette = {
   orange600: '#D97706',
   red600: '#DC2626',
   white: '#FFFFFF',
-  // dark surfaces
-  night900: '#0A0F1C',
-  night800: '#121A2A',
+  // dark surfaces (aligned with home v3 mock #0A101C / #111A2A)
+  night900: '#0A101C',
+  night800: '#111A2A',
   night700: '#1A2336',
   night600: '#37445C',
   nightText: '#F2F5F7',
@@ -82,7 +82,7 @@ export const lightColors: ThemeColors = {
 
 export const darkColors: ThemeColors = {
   bgPrimary: palette.night900,
-  bgSurface: palette.night800,
+  bgSurface: palette.night900,
   bgCard: palette.night800,
   textPrimary: palette.nightText,
   textSecondary: '#B9C2CE',
@@ -128,4 +128,6 @@ export const fontSize = {
   lg: 18,
   xl: 24,
   xxl: 34,
+  /** Home hero total (bulk home-screen preview) */
+  hero: 36,
 } as const;

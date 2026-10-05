@@ -18,8 +18,13 @@ export function Card({ style, padded = true, children, ...rest }: CardProps) {
         {
           backgroundColor: colors.bgCard,
           borderColor: colors.border,
+          borderWidth: StyleSheet.hairlineWidth,
           padding: padded ? spacing.s4 : 0,
+          shadowColor: '#101A26',
+          shadowOffset: { width: 0, height: 6 },
           shadowOpacity: isDark ? 0 : 0.05,
+          shadowRadius: isDark ? 0 : 12,
+          elevation: isDark ? 0 : 2,
         },
         style,
       ]}

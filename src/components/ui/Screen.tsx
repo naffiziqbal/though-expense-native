@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing } from '../../constants/theme';
-import { useSafeTop } from '../../hooks/useSafeTop';
+import { useTabScreenTopPadding } from '../../hooks/useSafeTop';
 import { useTheme } from '../../hooks/useTheme';
 import { useKeyboardLift } from './KeyboardSpacer';
 
@@ -43,9 +43,10 @@ export function Screen({
 }: ScreenProps) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const tabTopPadding = useTabScreenTopPadding();
   const { height: windowHeight } = useWindowDimensions();
-  const topInset = useSafeTop();
-  const paddingTop = safeTop ? topInset + spacing.s3 : spacing.s4;
+  /** Scrolls with content — no fixed outer pad (avoids a blank band when pulling/scrolling). */
+  const paddingTop = safeTop ? tabTopPadding : spacing.s4;
 
   const lift = useKeyboardLift(insets.bottom);
   const scrollRef = useRef<ScrollView>(null);
@@ -83,9 +84,14 @@ export function Screen({
     <ScrollView
       ref={scrollRef}
       style={{ flex: 1 }}
+      contentInsetAdjustmentBehavior="never"
       contentContainerStyle={[
-        styles.content,
-        { paddingTop, paddingBottom: spacing.s8 + insets.bottom },
+        safeTop ? styles.contentTab : styles.content,
+        {
+          paddingTop,
+          // Tab scenes already sit above the tab bar — only a little scroll end padding.
+          paddingBottom: safeTop ? spacing.s3 : spacing.s8 + insets.bottom,
+        },
         contentStyle,
       ]}
       keyboardShouldPersistTaps="handled"
@@ -103,7 +109,9 @@ export function Screen({
     </ScrollView>
   ) : (
     <View style={{ flex: 1 }}>
-      <View style={[styles.content, { flex: 1, paddingTop }, contentStyle]}>{children}</View>
+      <View style={[safeTop ? styles.contentTab : styles.content, { flex: 1, paddingTop }, contentStyle]}>
+        {children}
+      </View>
       {/* Keyboard spacer: pushes pinned bottom content (e.g. chat input) above the keyboard */}
       <Animated.View style={{ height: lift }} />
     </View>
@@ -116,5 +124,9 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing.s4,
     gap: spacing.s4,
+  },
+  contentTab: {
+    paddingHorizontal: spacing.s4,
+    gap: spacing.s3,
   },
 });

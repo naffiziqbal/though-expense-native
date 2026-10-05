@@ -9,7 +9,9 @@ export function CategoryBadge({ category }: { category: string }) {
   const { bg, text } = getCategoryBadgeColors(category, isDark);
   return (
     <View style={[styles.badge, { backgroundColor: bg }]}>
-      <Text style={[styles.text, { color: text }]}>{category}</Text>
+      <Text style={[styles.text, { color: text }]} numberOfLines={1} ellipsizeMode="tail">
+        {category}
+      </Text>
     </View>
   );
 }
@@ -20,9 +22,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.s2,
     paddingVertical: 2,
     alignSelf: 'flex-start',
+    maxWidth: 120,
   },
   text: {
-    fontSize: fontSize.xs,
     fontFamily: fonts.semibold,
+    fontSize: 10,
   },
 });

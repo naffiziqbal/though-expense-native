@@ -6,7 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 import { KeyboardSpacer } from '../../components/ui/KeyboardSpacer';
 import { useClipboardCapture } from '../../hooks/useClipboardCapture';
 import { isCurrentlyOffline } from '../../hooks/useOutboxSync';
-import { useSafeTop } from '../../hooks/useSafeTop';
+import { useTabScreenTopPadding } from '../../hooks/useSafeTop';
 import { useTourTarget } from '../../hooks/useTourTarget';
 import { TOUR_TARGETS } from '../../lib/tourSteps';
 import { CategoryIconBubble } from '../../components/CategoryIconBubble';
@@ -40,7 +40,7 @@ type SaveStage = 'text' | 'amounts' | 'categorizing' | 'saving' | null;
 export default function AddExpenseScreen() {
   const { colors } = useTheme();
   const router = useRouter();
-  const topInset = useSafeTop();
+  const tabTopPadding = useTabScreenTopPadding();
   const { user } = useAuthStore();
   const currency = user?.currency || 'USD';
   const isPremium = user?.isPremium ?? false;
@@ -248,7 +248,7 @@ export default function AddExpenseScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.bgPrimary }}>
       <View style={{ flex: 1 }}>
-        <View style={[styles.container, { paddingTop: topInset + spacing.s3 }]}>
+        <View style={[styles.container, { paddingTop: tabTopPadding }]}>
           {/* Header */}
           <View>
             <Text style={[styles.title, { color: colors.textPrimary }]}>Quick Log</Text>

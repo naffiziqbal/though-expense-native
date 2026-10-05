@@ -21,6 +21,18 @@ const currencyCodeMap: Record<string, string> = {
   '৳': 'BDT',
 };
 
+export function currencyCodeForDisplay(currency: string): string {
+  return currencyCodeMap[currency] || currency;
+}
+
+/** Stacked amount column (code + negative value) for expense rows. */
+export function formatExpenseAmountParts(amount: number, currency: string): { code: string; value: string } {
+  return {
+    code: currencyCodeForDisplay(currency),
+    value: `-${amount.toFixed(2)}`,
+  };
+}
+
 export function formatCurrency(amount: number, currency: string = 'USD'): string {
   const mapped = currencyCodeMap[currency] || currency;
   try {

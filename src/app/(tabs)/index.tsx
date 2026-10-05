@@ -1,11 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import { format, parseISO } from 'date-fns';
 import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { CategoryIconBubble } from '../../components/CategoryIconBubble';
-import { DonutChart } from '../../components/charts/DonutChart';
-import { ProgressBar } from '../../components/charts/ProgressBar';
+import { DailySpendingChart } from '../../components/home/DailySpendingChart';
 import { BottomSheet } from '../../components/ui/BottomSheet';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
@@ -16,12 +16,22 @@ import { useTheme } from '../../hooks/useTheme';
 import { api } from '../../lib/api';
 import { usePendingExpenses } from '../../hooks/usePendingExpenses';
 import { useTourTarget } from '../../hooks/useTourTarget';
-import { TOUR_TARGETS } from '../../lib/tourSteps';
+import {
+  budgetPaceLabel,
+  buildLastFiveDayBuckets,
+  daysInMonth,
+  daysLeftInMonth,
+  expectedPacePercent,
+  expensesToday,
+  isoDay,
+  sumExpensesOnDay,
+  timeOfDayGreeting,
+} from '../../lib/homeDashboard';
 import { addPendingToTotals } from '../../lib/pendingExpenses';
+import { TOUR_TARGETS } from '../../lib/tourSteps';
 import type { BudgetSummary, CategorySummary, Expense, Goal, Insight } from '../../lib/types';
 import { formatCurrency, formatDate } from '../../lib/utils';
 import { useAuthStore } from '../../store/authStore';
-import { usePendingStore } from '../../store/pendingStore';
 
 function getCurrentMonthRange() {
   const now = new Date();
@@ -40,16 +50,14 @@ type NotificationItem = {
 };
 
 export default function HomeScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const router = useRouter();
   const { user } = useAuthStore();
   const pending = usePendingExpenses();
-  const totalTarget = useTourTarget(TOUR_TARGETS.homeTotal);
-  const budgetTarget = useTourTarget(TOUR_TARGETS.homeBudget);
-  const isPremium = user?.isPremium ?? false;
+  const heroTarget = useTourTarget(TOUR_TARGETS.homeTotal);
 
   const [summary, setSummary] = useState<CategorySummary | null>(null);
-  const [recentExpenses, setRecentExpenses] = useState<Expense[]>([]);
+  const [monthExpenses, setMonthExpenses] = useState<Expense[]>([]);
   const [insights, setInsights] = useState<Insight[]>([]);
   const [budget, setBudget] = useState<BudgetSummary | null>(null);
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -57,6 +65,10 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [seenIds, setSeenIds] = useState<string[]>([]);
+
+  const insightPanelBg = isDark ? '#0F2F2C' : colors.accentSoft;
+  const nestedTileBg = colors.bgPrimary;
+  const progressTrack = isDark ? '#1C2638' : colors.divider;
 
   useEffect(() => {
     AsyncStorage.getItem('seen-notifications')
@@ -70,13 +82,13 @@ export default function HomeScreen() {
     try {
       const [summaryRes, expensesRes, insightsRes, budgetRes, goalsRes] = await Promise.all([
         api.getCategorySummary({ startDate, endDate }),
-        api.getExpenses({ limit: 5, startDate, endDate }),
+        api.getExpenses({ limit: 100, startDate, endDate }),
         api.getInsights({ limit: 10 }),
         api.getCurrentBudget(),
         api.getGoals().catch(() => null),
       ]);
       if (summaryRes.success) setSummary(summaryRes.data);
-      if (expensesRes.success) setRecentExpenses(expensesRes.data.expenses);
+      if (expensesRes.success) setMonthExpenses(expensesRes.data.expenses);
       if (insightsRes.success) setInsights(insightsRes.data.insights);
       if (budgetRes.success) setBudget(budgetRes.data);
       if (goalsRes?.success) setGoals(goalsRes.data.goals.filter((g) => g.status === 'active'));
@@ -88,7 +100,6 @@ export default function HomeScreen() {
     }
   }, []);
 
-  // Refetch every time this tab gains focus (covers add/edit/delete flows)
   useFocusEffect(
     useCallback(() => {
       fetchData();
@@ -96,32 +107,7 @@ export default function HomeScreen() {
   );
 
   const { startDate, endDate } = getCurrentMonthRange();
-  const merged = addPendingToTotals(
-    summary?.totalSpent ?? 0,
-    summary?.byCategory ?? {},
-    pending,
-    startDate,
-    endDate
-  );
-  const displaySummary: CategorySummary | null = summary
-    ? {
-        ...summary,
-        totalSpent: merged.totalSpent,
-        byCategory: merged.byCategory,
-        transactionCount: (summary.transactionCount || 0) + pending.filter((p) => p.date.slice(0, 10) >= startDate && p.date.slice(0, 10) <= endDate).length,
-      }
-    : pending.length
-      ? {
-          totalSpent: merged.totalSpent,
-          currency: user?.currency || 'USD',
-          byCategory: merged.byCategory,
-          percentages: {},
-          topCategories: Object.keys(merged.byCategory),
-          transactionCount: pending.length,
-        }
-      : null;
-
-  const pendingRecent: Expense[] = pending.map((p) => ({
+  const pendingExpenses: Expense[] = pending.map((p) => ({
     id: `pending:${p.localId}`,
     userId: user?.id || '',
     description: p.description,
@@ -134,23 +120,48 @@ export default function HomeScreen() {
     createdAt: p.createdAt,
     updatedAt: p.createdAt,
   }));
-  const displayRecent = [...pendingRecent, ...recentExpenses].slice(0, 5);
+
+  const mergedExpenses = useMemo(() => {
+    const ids = new Set(monthExpenses.map((e) => e.id));
+    return [...pendingExpenses.filter((e) => !ids.has(e.id)), ...monthExpenses];
+  }, [monthExpenses, pendingExpenses]);
+
+  const merged = addPendingToTotals(
+    summary?.totalSpent ?? 0,
+    summary?.byCategory ?? {},
+    pending,
+    startDate,
+    endDate
+  );
 
   const displayBudget = budget
     ? {
         ...budget,
-        total_spent: budget.total_spent + pending.filter((p) => p.date.slice(0, 10) >= startDate && p.date.slice(0, 10) <= endDate).reduce((s, p) => s + p.amount, 0),
+        total_spent:
+          budget.total_spent +
+          pending.filter((p) => p.date.slice(0, 10) >= startDate && p.date.slice(0, 10) <= endDate).reduce((s, p) => s + p.amount, 0),
       }
     : budget;
   if (displayBudget) {
     displayBudget.remaining = displayBudget.total_limit - displayBudget.total_spent;
-    displayBudget.percentage = displayBudget.total_limit > 0 ? Math.round((displayBudget.total_spent / displayBudget.total_limit) * 100) : 0;
+    displayBudget.percentage =
+      displayBudget.total_limit > 0 ? Math.round((displayBudget.total_spent / displayBudget.total_limit) * 100) : 0;
   }
 
-  const currency = displaySummary?.currency || user?.currency || 'USD';
-  const budgetPct = displayBudget ? displayBudget.percentage : 0;
-  const topCategory = Object.entries(merged.byCategory).sort((a, b) => b[1] - a[1])[0]?.[0];
-  const topCategoryAmount = topCategory ? merged.byCategory[topCategory] : 0;
+  const currency = summary?.currency || user?.currency || 'USD';
+  const budgetPct = displayBudget?.percentage ?? 0;
+  const expectedPct = expectedPacePercent();
+  const paceLabel = budgetPaceLabel(budgetPct, expectedPct);
+  const daysLeft = daysLeftInMonth();
+  const todayKey = isoDay(new Date());
+  const spentToday = sumExpensesOnDay(mergedExpenses, todayKey);
+  const dailyBuckets = buildLastFiveDayBuckets(mergedExpenses);
+  const dailyLimit =
+    displayBudget && displayBudget.total_limit > 0 ? displayBudget.total_limit / daysInMonth() : 0;
+  const safePerDay = displayBudget && daysLeft > 0 ? Math.max(0, displayBudget.remaining) / daysLeft : 0;
+  const todayExpenses = expensesToday(mergedExpenses);
+  const featuredInsight = insights[0];
+  const primaryGoal = goals[0];
 
   const notifications: NotificationItem[] = [];
   if (displayBudget && displayBudget.percentage >= 100) {
@@ -181,207 +192,237 @@ export default function HomeScreen() {
 
   const openNotifications = () => {
     setNotificationOpen(true);
-    const merged = Array.from(new Set([...seenIds, ...notifications.map((n) => n.id)])).slice(-100);
-    setSeenIds(merged);
-    AsyncStorage.setItem('seen-notifications', JSON.stringify(merged)).catch(() => {});
+    const mergedIds = Array.from(new Set([...seenIds, ...notifications.map((n) => n.id)])).slice(-100);
+    setSeenIds(mergedIds);
+    AsyncStorage.setItem('seen-notifications', JSON.stringify(mergedIds)).catch(() => {});
   };
 
-  const donutFill = Math.min(100, Math.max(0, budgetPct));
+  const formatExpenseTime = (dateString: string) => {
+    try {
+      return format(parseISO(dateString), 'h:mm a');
+    } catch {
+      return '';
+    }
+  };
 
   return (
-    <Screen safeTop refreshing={refreshing} onRefresh={() => fetchData(true)}>
-      {/* Zone A: Personal Header */}
+    <Screen
+      safeTop
+      contentStyle={[styles.homeContent, styles.homeScrollContent]}
+      refreshing={refreshing}
+      onRefresh={() => fetchData(true)}
+    >
       <View style={styles.headerRow}>
         <View>
-          <Text style={[styles.welcome, { color: colors.textMuted }]}>WELCOME BACK,</Text>
-          <Text style={[styles.name, { color: colors.accent }]}>{user?.name || 'User'}</Text>
+          <Text style={[styles.greeting, { color: colors.textMuted }]}>{timeOfDayGreeting()}</Text>
+          <Text style={[styles.nameAccent, { color: colors.accent }]}>
+            {user?.name?.split(/\s+/)[0] || 'User'}
+          </Text>
         </View>
         <Pressable
           onPress={openNotifications}
-          style={[styles.bellBtn, { backgroundColor: colors.bgCard, borderColor: colors.border }]}
+          style={[
+            styles.bellBtn,
+            {
+              backgroundColor: colors.bgCard,
+              borderColor: colors.border,
+              borderWidth: isDark ? 0 : StyleSheet.hairlineWidth,
+            },
+          ]}
         >
           <Ionicons name="notifications-outline" size={20} color={colors.textSecondary} />
-          {unseenCount > 0 ? (
-            <View style={[styles.badge, { backgroundColor: colors.error }]}>
-              <Text style={styles.badgeText}>{unseenCount > 9 ? '9+' : unseenCount}</Text>
-            </View>
-          ) : null}
+          {unseenCount > 0 ? <View style={[styles.bellDot, { backgroundColor: colors.error }]} /> : null}
         </Pressable>
       </View>
 
-      {/* Budget warning banner */}
-      {displayBudget && displayBudget.percentage >= 90 ? (
-        <Card
-          style={{
-            backgroundColor: displayBudget.percentage >= 100 ? colors.errorSoft : 'rgba(217, 119, 6, 0.12)',
-            borderColor: displayBudget.percentage >= 100 ? colors.error : colors.warning,
-          }}
-        >
-          <Text style={{ color: colors.textPrimary, fontFamily: fonts.semibold, fontSize: fontSize.sm }}>
-            {displayBudget.percentage >= 100
-              ? 'You have exceeded your monthly budget'
-              : 'You are about to exceed your monthly budget'}
-          </Text>
-          <Text style={{ color: colors.textSecondary, fontSize: fontSize.xs, marginTop: 4 }}>
-            {formatCurrency(displayBudget.total_spent, currency)} of {formatCurrency(displayBudget.total_limit, currency)} (
-            {displayBudget.percentage}%)
-          </Text>
-        </Card>
-      ) : null}
-
-      {/* Zone B: Hero card */}
-      <Card {...totalTarget}>
-        <View style={styles.heroRow}>
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={[styles.heroLabel, { color: colors.textMuted }]}>TOTAL SPENT</Text>
-            <Text style={[styles.heroAmount, { color: colors.textPrimary }]} numberOfLines={1} adjustsFontSizeToFit>
-              {loading ? '…' : formatCurrency(displaySummary?.totalSpent ?? 0, currency)}
-            </Text>
-            <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, marginTop: spacing.s2 }}>
-              {displaySummary?.transactionCount ?? 0} transactions
-            </Text>
-            {displayBudget ? (
-              <Text
-                style={{
-                  color: colors.accent,
-                  fontFamily: fonts.semibold,
-                  fontSize: fontSize.xs,
-                  backgroundColor: colors.accentSoft,
-                  borderRadius: radius.full,
-                  paddingHorizontal: spacing.s2,
-                  paddingVertical: 3,
-                  alignSelf: 'flex-start',
-                  marginTop: spacing.s2,
-                  overflow: 'hidden',
-                }}
-              >
-                {formatCurrency(Math.max(0, displayBudget.remaining), currency)} safe to spend
+      <Card {...heroTarget} style={styles.heroCard}>
+        {displayBudget ? (
+          <>
+            <View style={styles.heroTopRow}>
+              <Text style={[styles.heroKicker, { color: colors.textMuted }]}>Left this month</Text>
+              <Text style={[styles.pacePill, { backgroundColor: insightPanelBg, color: colors.accent }]}>
+                {paceLabel}
               </Text>
-            ) : null}
-          </View>
-          <DonutChart
-            size={96}
-            strokeWidth={12}
-            centerLabel={`${Math.round(donutFill)}%`}
-            centerSubLabel="of budget"
-            data={[
-              { value: donutFill, color: colors.accent },
-              { value: 100 - donutFill, color: colors.border },
-            ]}
-          />
-        </View>
+            </View>
+            <Text style={[styles.heroAmount, { color: colors.textPrimary }]}>
+              {loading ? '…' : formatCurrency(Math.max(0, displayBudget.remaining), currency)}
+            </Text>
+            <Text style={[styles.heroSub, { color: colors.textMuted }]}>
+              of {formatCurrency(displayBudget.total_limit, currency)} · {daysLeft} days left
+            </Text>
+            <View style={[styles.progressTrack, { backgroundColor: progressTrack }]}>
+              <View
+                style={[
+                  styles.progressFill,
+                  { width: `${Math.min(100, budgetPct)}%`, backgroundColor: colors.accent },
+                ]}
+              />
+              <View
+                style={[
+                  styles.paceMarker,
+                  { left: `${Math.min(98, Math.max(0, expectedPct))}%`, backgroundColor: colors.textPrimary },
+                ]}
+              />
+            </View>
+            <View style={styles.paceLegend}>
+              <Text style={[styles.paceLegendText, { color: colors.textMuted }]}>
+                Spent {formatCurrency(displayBudget.total_spent, currency)} ({budgetPct}%)
+              </Text>
+              <Text style={[styles.paceLegendText, { color: colors.textMuted }]}>Expected pace {expectedPct}%</Text>
+            </View>
+            <View style={styles.statRow}>
+              <View style={[styles.statTile, { backgroundColor: nestedTileBg }]}>
+                <Text style={[styles.statLabel, { color: colors.textMuted }]}>Safe per day</Text>
+                <Text style={[styles.statValue, { color: colors.textPrimary }]}>
+                  {formatCurrency(safePerDay, currency)}
+                </Text>
+              </View>
+              <View style={[styles.statTile, { backgroundColor: nestedTileBg }]}>
+                <Text style={[styles.statLabel, { color: colors.textMuted }]}>Spent today</Text>
+                <Text style={[styles.statValue, { color: colors.textPrimary }]}>
+                  {formatCurrency(spentToday, currency)}
+                </Text>
+              </View>
+            </View>
+          </>
+        ) : (
+          <>
+            <Text style={[styles.heroKicker, { color: colors.textMuted }]}>Spent this month</Text>
+            <Text style={[styles.heroAmount, { color: colors.textPrimary }]}>
+              {loading ? '…' : formatCurrency(merged.totalSpent, currency)}
+            </Text>
+            <Pressable onPress={() => router.push('/budget')} style={{ marginTop: spacing.s2 }}>
+              <Text style={{ color: colors.accent, fontFamily: fonts.semibold, fontSize: fontSize.sm }}>
+                Set a monthly budget →
+              </Text>
+            </Pressable>
+          </>
+        )}
       </Card>
 
-      {/* Zone C: Context grid */}
-      <View style={styles.grid}>
-        <Pressable style={{ flex: 1 }} onPress={() => router.push('/budget')}>
-          <Card {...budgetTarget} style={styles.gridCard}>
-            <Text style={[styles.heroLabel, { color: colors.textMuted }]}>SAFE TO SPEND</Text>
-            <Text style={[styles.gridAmount, { color: colors.textPrimary }]} numberOfLines={1} adjustsFontSizeToFit>
-              {displayBudget ? formatCurrency(Math.max(0, displayBudget.remaining), currency) : '—'}
+      {featuredInsight ? (
+        <Pressable
+          onPress={() => router.push('/assistant')}
+          style={[styles.insightCard, { backgroundColor: insightPanelBg }]}
+        >
+          <Ionicons name="sparkles" size={20} color={colors.accent} style={{ marginTop: 2 }} />
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.insightTitle, { color: colors.textPrimary }]} numberOfLines={2}>
+              {featuredInsight.content.split(/[.!?]/)[0]?.trim() || featuredInsight.content}
             </Text>
-            <View style={{ gap: spacing.s1 }}>
-              <ProgressBar percentage={budgetPct} />
-              <Text style={{ color: colors.accent, fontSize: 10, fontFamily: fonts.semibold }}>View budget</Text>
-            </View>
-          </Card>
+            <Text style={[styles.insightBody, { color: isDark ? '#9FD9D0' : colors.textSecondary }]} numberOfLines={3}>
+              {featuredInsight.content}
+            </Text>
+            <Text style={[styles.insightLink, { color: colors.accent }]}>Ask advisor →</Text>
+          </View>
         </Pressable>
-        <Card style={[styles.gridCard, { flex: 1 }]}>
-          <Text style={[styles.heroLabel, { color: colors.textMuted }]}>TOP CATEGORY</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.s2 }}>
-            {topCategory ? <CategoryIconBubble category={topCategory} size={40} /> : null}
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={{ color: colors.textPrimary, fontFamily: fonts.bold }} numberOfLines={1}>
-                {topCategory || '—'}
-              </Text>
-              <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, fontFamily: fonts.semibold }} numberOfLines={1}>
-                {loading ? '…' : formatCurrency(topCategoryAmount, currency)}
-              </Text>
-            </View>
-          </View>
-        </Card>
-      </View>
-
-      {/* AI advisor entry */}
-      <Pressable onPress={() => router.push('/assistant')}>
-        <Card style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.s3 }}>
-          <View style={[styles.advisorIcon, { backgroundColor: colors.accentSoft }]}>
-            <Ionicons name="sparkles" size={20} color={colors.accent} />
-          </View>
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={{ color: colors.textPrimary, fontFamily: fonts.semibold }}>Ask your AI advisor</Text>
-            <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }} numberOfLines={1}>
-              Why did I spend so much? How can I save more?
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-        </Card>
-      </Pressable>
-
-      {/* Savings goals snapshot */}
-      {goals.length > 0 ? (
-        <View style={{ gap: spacing.s3 }}>
-          <View style={styles.sectionRow}>
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Savings Goals</Text>
-            <Pressable onPress={() => router.push('/goals')}>
-              <Text style={{ color: colors.accent, fontFamily: fonts.semibold, fontSize: fontSize.sm }}>View All</Text>
-            </Pressable>
-          </View>
-          <Card style={{ gap: spacing.s3 }}>
-            {goals.slice(0, 2).map((goal) => (
-              <Pressable key={goal.id} onPress={() => router.push('/goals')} style={{ gap: spacing.s1 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.s2 }}>
-                  <Text style={{ color: colors.textPrimary, fontFamily: fonts.medium, flex: 1 }} numberOfLines={1}>
-                    {goal.name}
-                  </Text>
-                  <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }}>
-                    {formatCurrency(goal.savedAmount, goal.currency)} / {formatCurrency(goal.targetAmount, goal.currency)}
-                  </Text>
-                </View>
-                <ProgressBar percentage={goal.progress * 100} />
-              </Pressable>
-            ))}
-          </Card>
-        </View>
       ) : null}
 
-      {/* Zone D: Recent transactions */}
-      {displayRecent.length > 0 ? (
-        <View style={{ gap: spacing.s3 }}>
-          <View style={styles.sectionRow}>
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Recent Transactions</Text>
+      <View style={styles.sectionHead}>
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Daily spending</Text>
+        {dailyLimit > 0 ? (
+          <Text style={[styles.sectionMeta, { color: colors.textMuted }]}>
+            Limit {formatCurrency(dailyLimit, currency)}
+          </Text>
+        ) : null}
+      </View>
+      <DailySpendingChart buckets={dailyBuckets} dailyLimit={dailyLimit} />
+
+      {primaryGoal ? (
+        <>
+          <View style={styles.sectionHead}>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Savings goal</Text>
+            <Pressable onPress={() => router.push('/goals')}>
+              <Text style={{ color: colors.accent, fontFamily: fonts.semibold, fontSize: fontSize.sm }}>View all</Text>
+            </Pressable>
+          </View>
+          <Card style={styles.goalCard}>
+            <View style={styles.goalTop}>
+              <View style={styles.goalIdentity}>
+                <View style={[styles.goalIcon, { backgroundColor: progressTrack }]}>
+                  <Ionicons name="laptop-outline" size={20} color={colors.accent} />
+                </View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={[styles.goalName, { color: colors.textPrimary }]} numberOfLines={1}>
+                    {primaryGoal.name}
+                  </Text>
+                  <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>
+                    {formatCurrency(primaryGoal.savedAmount, primaryGoal.currency)} of{' '}
+                    {formatCurrency(primaryGoal.targetAmount, primaryGoal.currency)}
+                  </Text>
+                </View>
+              </View>
+              <Text style={[styles.goalPct, { color: colors.textPrimary }]}>
+                {Math.round(primaryGoal.progress * 100)}%
+              </Text>
+            </View>
+            <View style={[styles.goalTrack, { backgroundColor: progressTrack }]}>
+              <View
+                style={[
+                  styles.goalFill,
+                  { width: `${Math.min(100, primaryGoal.progress * 100)}%`, backgroundColor: colors.accent },
+                ]}
+              />
+            </View>
+            <View style={styles.goalFoot}>
+              <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>
+                {formatCurrency(Math.max(0, primaryGoal.targetAmount - primaryGoal.savedAmount), primaryGoal.currency)}{' '}
+                to go
+              </Text>
+              <Pressable
+                onPress={() => router.push('/goals')}
+                style={[styles.goalChip, { backgroundColor: insightPanelBg }]}
+              >
+                <Text style={{ color: colors.accent, fontFamily: fonts.semibold, fontSize: fontSize.xs }}>Add funds</Text>
+              </Pressable>
+            </View>
+          </Card>
+        </>
+      ) : null}
+
+      {todayExpenses.length > 0 ? (
+        <>
+          <View style={styles.sectionHead}>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+              Today · {formatCurrency(spentToday, currency)}
+            </Text>
             <Pressable onPress={() => router.push('/(tabs)/expenses')}>
-              <Text style={{ color: colors.accent, fontFamily: fonts.semibold, fontSize: fontSize.sm }}>View All</Text>
+              <Text style={{ color: colors.accent, fontFamily: fonts.semibold, fontSize: fontSize.sm }}>View all</Text>
             </Pressable>
           </View>
           <Card padded={false}>
-            {displayRecent.map((expense, i) => (
+            {todayExpenses.map((expense, i) => (
               <Pressable
                 key={expense.id}
                 onPress={() => router.push('/(tabs)/expenses')}
                 style={[
-                  styles.txRow,
-                  i < displayRecent.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+                  styles.todayRow,
+                  i < todayExpenses.length - 1 && {
+                    borderBottomWidth: StyleSheet.hairlineWidth,
+                    borderBottomColor: isDark ? '#1C2638' : colors.divider,
+                  },
                 ]}
               >
-                <CategoryIconBubble category={expense.category} size={44} />
+                <CategoryIconBubble category={expense.category} size={36} />
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={{ color: colors.textPrimary, fontFamily: fonts.bold }} numberOfLines={1}>
+                  <Text style={[styles.todayTitle, { color: colors.textPrimary }]} numberOfLines={1}>
                     {expense.description}
                   </Text>
-                  <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }}>{formatDate(expense.date)}</Text>
+                  <Text style={[styles.todayMeta, { color: colors.textMuted }]} numberOfLines={1}>
+                    {expense.category}
+                    {formatExpenseTime(expense.date) ? ` · ${formatExpenseTime(expense.date)}` : ''}
+                  </Text>
                 </View>
-                <Text style={{ color: colors.textPrimary, fontFamily: fonts.bold }}>
-                  -{formatCurrency(expense.amount, expense.currency)}
+                <Text style={[styles.todayAmount, { color: colors.textPrimary }]}>
+                  -{expense.amount.toFixed(0)}
                 </Text>
               </Pressable>
             ))}
           </Card>
-        </View>
+        </>
       ) : null}
 
-      {/* Empty state */}
-      {!loading && (displaySummary?.transactionCount ?? 0) === 0 ? (
+      {!loading && merged.totalSpent === 0 ? (
         <Card>
           <EmptyState
             icon="create-outline"
@@ -393,15 +434,11 @@ export default function HomeScreen() {
         </Card>
       ) : null}
 
-      {/* Notifications sheet */}
       <BottomSheet visible={notificationOpen} onClose={() => setNotificationOpen(false)} title="Notifications">
         <View style={{ gap: spacing.s2 }}>
           {notifications.length === 0 ? (
             <View style={{ alignItems: 'center', paddingVertical: spacing.s5, gap: spacing.s2 }}>
               <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }}>No notifications yet</Text>
-              <Text style={{ color: colors.textMuted, fontSize: fontSize.xs }}>
-                You’ll see budget alerts and AI insights here
-              </Text>
               <Button
                 title="Go to Insights"
                 variant="ghost"
@@ -422,7 +459,7 @@ export default function HomeScreen() {
                       n.type === 'budget-exceeded'
                         ? colors.errorSoft
                         : n.type === 'budget-warning'
-                          ? 'rgba(217, 119, 6, 0.12)'
+                          ? colors.warningSoft
                           : colors.accentSoft,
                   },
                 ]}
@@ -434,24 +471,6 @@ export default function HomeScreen() {
               </View>
             ))
           )}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.s2 }}>
-            <Pressable
-              onPress={() => {
-                setNotificationOpen(false);
-                router.push('/budget');
-              }}
-            >
-              <Text style={{ color: colors.accent, fontFamily: fonts.semibold, fontSize: fontSize.sm }}>View budget</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => {
-                setNotificationOpen(false);
-                router.push('/(tabs)/insights');
-              }}
-            >
-              <Text style={{ color: colors.accent, fontFamily: fonts.semibold, fontSize: fontSize.sm }}>View all insights</Text>
-            </Pressable>
-          </View>
         </View>
       </BottomSheet>
     </Screen>
@@ -459,95 +478,219 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  homeContent: {
+    gap: spacing.s3,
+  },
+  homeScrollContent: {
+    flexGrow: 0,
+  },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  welcome: {
+  greeting: {
     fontSize: fontSize.xs,
-    fontFamily: fonts.semibold,
-    letterSpacing: 1,
+    fontFamily: fonts.medium,
   },
-  name: {
-    fontSize: fontSize.xl,
-    fontFamily: fonts.bold,
+  nameAccent: {
+    fontSize: 20,
+    fontFamily: fonts.medium,
+    marginTop: 2,
   },
   bellBtn: {
     width: 40,
     height: 40,
-    borderRadius: radius.full,
-    borderWidth: 1,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  badge: {
+  bellDot: {
     position: 'absolute',
-    top: -2,
-    right: -2,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+    top: 8,
+    right: 9,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
-  badgeText: {
-    color: '#fff',
-    fontSize: 9,
-    fontFamily: fonts.bold,
+  heroCard: {
+    borderRadius: 20,
+    gap: spacing.s2,
   },
-  heroRow: {
+  heroTopRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    gap: spacing.s4,
+    alignItems: 'center',
   },
-  heroLabel: {
-    fontSize: 10,
-    fontFamily: fonts.bold,
-    letterSpacing: 1,
+  heroKicker: {
+    fontSize: fontSize.xs,
+  },
+  pacePill: {
+    fontSize: 11,
+    fontFamily: fonts.semibold,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: radius.full,
+    overflow: 'hidden',
   },
   heroAmount: {
-    fontSize: fontSize.xxl,
-    fontFamily: fonts.bold,
-    marginTop: 4,
+    fontSize: 32,
+    fontFamily: fonts.medium,
+    letterSpacing: -0.5,
   },
-  grid: {
+  heroSub: {
+    fontSize: fontSize.xs,
+    marginBottom: spacing.s2,
+  },
+  progressTrack: {
+    height: 8,
+    borderRadius: 4,
+    overflow: 'visible',
+    position: 'relative',
+  },
+  progressFill: {
+    height: 8,
+    borderRadius: 4,
+  },
+  paceMarker: {
+    position: 'absolute',
+    top: -4,
+    width: 2,
+    height: 16,
+    marginLeft: -1,
+  },
+  paceLegend: {
     flexDirection: 'row',
-    gap: spacing.s3,
-  },
-  gridCard: {
-    height: 130,
     justifyContent: 'space-between',
+    marginTop: 6,
   },
-  gridAmount: {
-    fontSize: fontSize.lg,
-    fontFamily: fonts.bold,
+  paceLegendText: {
+    fontSize: 11,
   },
-  sectionRow: {
+  statRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: spacing.s2,
+  },
+  statTile: {
+    flex: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 2,
+  },
+  statLabel: {
+    fontSize: 11,
+  },
+  statValue: {
+    fontSize: fontSize.md,
+    fontFamily: fonts.medium,
+  },
+  insightCard: {
+    borderRadius: 16,
+    padding: 14,
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'flex-start',
+  },
+  insightTitle: {
+    fontSize: fontSize.sm,
+    fontFamily: fonts.semibold,
+  },
+  insightBody: {
+    fontSize: fontSize.xs,
+    marginTop: 2,
+    lineHeight: 18,
+  },
+  insightLink: {
+    fontSize: fontSize.xs,
+    fontFamily: fonts.semibold,
+    marginTop: spacing.s2,
+  },
+  sectionHead: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'baseline',
+    marginBottom: spacing.s1,
   },
   sectionTitle: {
-    fontSize: fontSize.lg,
-    fontFamily: fonts.bold,
+    fontSize: fontSize.sm,
+    fontFamily: fonts.medium,
   },
-  txRow: {
+  sectionMeta: {
+    fontSize: 11,
+  },
+  goalCard: {
+    borderRadius: 16,
+    gap: spacing.s2,
+  },
+  goalTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  goalIdentity: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.s3,
-    padding: spacing.s3,
+    gap: 10,
+    flex: 1,
+    minWidth: 0,
+  },
+  goalIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  goalName: {
+    fontSize: fontSize.sm,
+    fontFamily: fonts.medium,
+  },
+  goalPct: {
+    fontSize: fontSize.md,
+    fontFamily: fonts.medium,
+  },
+  goalTrack: {
+    height: 6,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  goalFill: {
+    height: 6,
+    borderRadius: 3,
+  },
+  goalFoot: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  goalChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: radius.full,
+  },
+  todayRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  todayTitle: {
+    fontSize: fontSize.sm,
+    fontFamily: fonts.medium,
+  },
+  todayMeta: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  todayAmount: {
+    fontSize: fontSize.sm,
+    fontFamily: fonts.medium,
   },
   notification: {
     padding: spacing.s3,
     borderRadius: radius.md,
-  },
-  advisorIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });

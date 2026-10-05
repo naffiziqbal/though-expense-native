@@ -1,12 +1,14 @@
-import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import { api } from '../lib/api';
 import { captureError } from '../lib/sentry';
 import {
+  addNotificationResponseListener,
   ensureAndroidChannel,
   getExpoPushToken,
+  getLastNotificationResponse,
+  pushNotificationsAvailable,
   requestPermission,
   routeForNotification,
   scheduleDailyReminder,
@@ -26,6 +28,7 @@ export function usePushNotifications() {
   const registeredFor = useRef<string | null>(null);
 
   useEffect(() => {
+    if (!pushNotificationsAvailable()) return;
     ensureAndroidChannel().catch(() => {});
   }, []);
 
@@ -37,6 +40,7 @@ export function usePushNotifications() {
     let cancelled = false;
 
     (async () => {
+      if (!pushNotificationsAvailable()) return;
       // Android grants POST_NOTIFICATIONS silently on older versions and shows a
       // single system dialog on 13+, so registering on login is not intrusive.
       // iOS waits for the explicit opt-in on the notifications screen.
@@ -72,6 +76,8 @@ export function usePushNotifications() {
 
   // Tap handling: both a cold start from a notification and a warm tap.
   useEffect(() => {
+    if (!pushNotificationsAvailable()) return;
+
     let handled = false;
 
     const go = (data: unknown) => {
@@ -79,17 +85,15 @@ export function usePushNotifications() {
       if (route) router.push(route as never);
     };
 
-    Notifications.getLastNotificationResponseAsync()
-      .then((response) => {
-        if (!response || handled) return;
-        handled = true;
-        go(response.notification.request.content.data);
-      })
-      .catch(() => {});
-
-    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+    getLastNotificationResponse().then((response) => {
+      if (!response || handled) return;
       handled = true;
-      go(response.notification.request.content.data);
+      go(response.data);
+    });
+
+    const subscription = addNotificationResponseListener((data) => {
+      handled = true;
+      go(data);
     });
 
     return () => subscription.remove();

@@ -4,6 +4,7 @@ import { useQuickActionRouting } from 'expo-quick-actions/router';
 import React, { useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { TAB_BAR_CORE_HEIGHT } from '../../constants/tabBar';
 import { radius } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { useTourTarget } from '../../hooks/useTourTarget';
@@ -48,9 +49,10 @@ export default function TabsLayout() {
         tabBarStyle: {
           backgroundColor: colors.bgCard,
           borderTopColor: colors.border,
-          height: 72 + insets.bottom,
-          paddingTop: 8,
-          paddingBottom: Math.max(insets.bottom, 8),
+          borderTopWidth: StyleSheet.hairlineWidth,
+          height: TAB_BAR_CORE_HEIGHT + insets.bottom,
+          paddingTop: 0,
+          paddingBottom: insets.bottom,
         },
       }}
     >

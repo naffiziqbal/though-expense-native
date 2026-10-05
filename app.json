@@ -23,6 +23,20 @@
       "package": "com.nafiziqbal.thoughtexpense",
       "googleServicesFile": "./google-services.json",
       "softwareKeyboardLayoutMode": "resize",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "thoughtexpense.nafiziqbal.com",
+              "pathPrefix": "/"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#0E9488",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

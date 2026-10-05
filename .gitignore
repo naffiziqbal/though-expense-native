@@ -44,3 +44,4 @@ example
 /android
 package-lock.json
 yarn.lock
+bulk-files
