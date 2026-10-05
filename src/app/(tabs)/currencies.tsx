@@ -2,15 +2,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
-import { Screen } from '../components/ui/Screen';
-import { fonts, fontSize, radius, spacing } from '../constants/theme';
-import { useTheme } from '../hooks/useTheme';
-import { api, getErrorMessage } from '../lib/api';
-import { CURRENCIES } from '../lib/currencies';
-import { toast } from '../store/toastStore';
-import { useAuthStore } from '../store/authStore';
+import { Button } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
+import { Screen } from '../../components/ui/Screen';
+import { fonts, fontSize, radius, spacing } from '../../constants/theme';
+import { useTheme } from '../../hooks/useTheme';
+import { api, getErrorMessage } from '../../lib/api';
+import { CURRENCIES } from '../../lib/currencies';
+import { toast } from '../../store/toastStore';
+import { useAuthStore } from '../../store/authStore';
 
 export default function CurrenciesScreen() {
   const { colors, isDark } = useTheme();

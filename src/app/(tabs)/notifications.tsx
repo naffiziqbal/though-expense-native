@@ -2,14 +2,14 @@ import DateTimePicker, { type DateTimePickerEvent } from '@react-native-communit
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
-import { BottomSheet } from '../components/ui/BottomSheet';
-import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
-import { Screen } from '../components/ui/Screen';
-import { fonts, fontSize, radius, spacing } from '../constants/theme';
-import { useTheme } from '../hooks/useTheme';
-import { api, getErrorMessage } from '../lib/api';
-import { captureError } from '../lib/sentry';
+import { BottomSheet } from '../../components/ui/BottomSheet';
+import { Button } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
+import { Screen } from '../../components/ui/Screen';
+import { fonts, fontSize, radius, spacing } from '../../constants/theme';
+import { useTheme } from '../../hooks/useTheme';
+import { api, getErrorMessage } from '../../lib/api';
+import { captureError } from '../../lib/sentry';
 import {
   cancelDailyReminder,
   getExpoPushToken,
@@ -17,9 +17,9 @@ import {
   requestPermission,
   scheduleDailyReminder,
   type PermissionOutcome,
-} from '../lib/notifications';
-import { toast } from '../store/toastStore';
-import { useNotificationStore } from '../store/notificationStore';
+} from '../../lib/notifications';
+import { toast } from '../../store/toastStore';
+import { useNotificationStore } from '../../store/notificationStore';
 
 function formatTime(hour: number, minute: number): string {
   const suffix = hour < 12 ? 'AM' : 'PM';

@@ -2,29 +2,27 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { ActionSheetIOS, Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BottomSheet } from '../components/ui/BottomSheet';
-import { Button } from '../components/ui/Button';
-import { DateField } from '../components/ui/DateField';
-import { Input } from '../components/ui/Input';
-import { Screen } from '../components/ui/Screen';
-import { fonts, fontSize, radius, spacing } from '../constants/theme';
-import { useTheme } from '../hooks/useTheme';
+import { BottomSheet } from '../../components/ui/BottomSheet';
+import { Button } from '../../components/ui/Button';
+import { DateField } from '../../components/ui/DateField';
+import { Input } from '../../components/ui/Input';
+import { Screen } from '../../components/ui/Screen';
+import { fonts, fontSize, radius, spacing } from '../../constants/theme';
+import { useTheme } from '../../hooks/useTheme';
 import {
   GOAL_STARTER_IDEAS,
   deadlineLabel,
   quickContributeAmounts,
   summarizeGoals,
-} from '../lib/goalsDashboard';
-import { api, getErrorMessage } from '../lib/api';
-import type { Goal } from '../lib/types';
-import { formatCurrency, formatDate } from '../lib/utils';
-import { toast } from '../store/toastStore';
-import { useAuthStore } from '../store/authStore';
+} from '../../lib/goalsDashboard';
+import { api, getErrorMessage } from '../../lib/api';
+import type { Goal } from '../../lib/types';
+import { formatCurrency, formatDate } from '../../lib/utils';
+import { toast } from '../../store/toastStore';
+import { useAuthStore } from '../../store/authStore';
 
 export default function GoalsScreen() {
   const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useAuthStore();
   const currency = user?.currency || 'USD';
@@ -287,11 +285,7 @@ export default function GoalsScreen() {
   };
 
   return (
-    <Screen
-      refreshing={refreshing}
-      onRefresh={() => fetchGoals(true)}
-      contentStyle={{ paddingTop: insets.top + spacing.s2, gap: spacing.s3 }}
-    >
+    <Screen safeTop refreshing={refreshing} onRefresh={() => fetchGoals(true)} contentStyle={{ gap: spacing.s3 }}>
       <View style={styles.pageHeader}>
         <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />

@@ -4,17 +4,17 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
-import { Input } from '../components/ui/Input';
-import { Screen } from '../components/ui/Screen';
-import { fonts, fontSize, spacing } from '../constants/theme';
-import { useTheme } from '../hooks/useTheme';
-import { api, getErrorMessage } from '../lib/api';
-import type { User } from '../lib/types';
-import { getImageUrl } from '../lib/utils';
-import { toast } from '../store/toastStore';
-import { useAuthStore } from '../store/authStore';
+import { Button } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
+import { Input } from '../../components/ui/Input';
+import { Screen } from '../../components/ui/Screen';
+import { fonts, fontSize, spacing } from '../../constants/theme';
+import { useTheme } from '../../hooks/useTheme';
+import { api, getErrorMessage } from '../../lib/api';
+import type { User } from '../../lib/types';
+import { getImageUrl } from '../../lib/utils';
+import { toast } from '../../store/toastStore';
+import { useAuthStore } from '../../store/authStore';
 
 export default function ProfileEditScreen() {
   const { colors } = useTheme();

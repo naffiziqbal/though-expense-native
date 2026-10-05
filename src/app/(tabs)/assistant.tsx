@@ -3,19 +3,20 @@ import { useRouter } from 'expo-router';
 import React, { useCallback, useRef, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTabScreenTopPadding } from '../../hooks/useSafeTop';
 import axios from 'axios';
-import { BottomSheet } from '../components/ui/BottomSheet';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
-import { Screen } from '../components/ui/Screen';
-import { fonts, fontSize, radius, spacing } from '../constants/theme';
-import { useTheme } from '../hooks/useTheme';
-import { ADVISOR_PROMPT_GROUPS, type AdvisorPrompt } from '../lib/advisorPrompts';
-import { api, getErrorMessage } from '../lib/api';
-import type { ChatTurn, SavingsPlan } from '../lib/types';
-import { formatCurrency } from '../lib/utils';
-import { useAuthStore } from '../store/authStore';
-import { toast } from '../store/toastStore';
+import { BottomSheet } from '../../components/ui/BottomSheet';
+import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
+import { Screen } from '../../components/ui/Screen';
+import { fonts, fontSize, radius, spacing } from '../../constants/theme';
+import { useTheme } from '../../hooks/useTheme';
+import { ADVISOR_PROMPT_GROUPS, type AdvisorPrompt } from '../../lib/advisorPrompts';
+import { api, getErrorMessage } from '../../lib/api';
+import type { ChatTurn, SavingsPlan } from '../../lib/types';
+import { formatCurrency } from '../../lib/utils';
+import { useAuthStore } from '../../store/authStore';
+import { toast } from '../../store/toastStore';
 
 interface Message extends ChatTurn {
   id: string;
@@ -60,6 +61,7 @@ function SavingsPlanBlock({ plan, colors }: { plan: SavingsPlan; colors: ReturnT
 export default function AssistantScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const tabTopPadding = useTabScreenTopPadding(spacing.s2);
   const router = useRouter();
   const { user } = useAuthStore();
   const isPremium = user?.isPremium ?? false;
@@ -278,7 +280,7 @@ export default function AssistantScreen() {
 
   return (
     <Screen scroll={false} contentStyle={{ padding: 0, gap: 0, paddingTop: 0 }}>
-      <View style={{ flex: 1, paddingTop: insets.top }}>
+      <View style={{ flex: 1, paddingTop: tabTopPadding }}>
         <View
           style={[
             styles.topBar,

@@ -80,15 +80,6 @@ function RootLayout() {
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="assistant" options={{ headerShown: false }} />
-          <Stack.Screen name="goals" options={{ headerShown: false }} />
-          <Stack.Screen name="recurring" options={{ title: 'Recurring' }} />
-          <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
-          <Stack.Screen name="profile-edit" options={{ title: 'Edit Profile' }} />
-          <Stack.Screen name="security" options={{ title: 'Security' }} />
-          <Stack.Screen name="currencies" options={{ title: 'Currency' }} />
-          <Stack.Screen name="premium" options={{ title: 'Premium' }} />
-          <Stack.Screen name="device-settings" options={{ title: 'Device Settings' }} />
         </Stack>
         <OfflineBanner visible={isOffline} queuedCount={queuedCount} />
         {/* Above the Stack so the tour can dim the tab bar it points at. */}

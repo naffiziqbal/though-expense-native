@@ -4,7 +4,7 @@ import React, { useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TAB_BAR_CORE_HEIGHT } from '../../constants/tabBar';
-import { radius } from '../../constants/theme';
+import { fonts, radius } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { useTourTarget } from '../../hooks/useTourTarget';
 import { TOUR_TARGETS } from '../../lib/tourSteps';
@@ -49,6 +49,10 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        headerStyle: { backgroundColor: colors.bgSurface },
+        headerTintColor: colors.textPrimary,
+        headerTitleStyle: { fontFamily: fonts.semibold },
+        headerShadowVisible: false,
         tabBarShowLabel: false,
         tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.textMuted,
@@ -120,7 +124,17 @@ export default function TabsLayout() {
           ),
         }}
       />
+      {/* Hidden tab routes — keep bottom nav visible (not root stack screens). */}
       <Tabs.Screen name="budget" options={{ href: null }} />
+      <Tabs.Screen name="goals" options={{ href: null }} />
+      <Tabs.Screen name="assistant" options={{ href: null }} />
+      <Tabs.Screen name="recurring" options={{ href: null, headerShown: true, title: 'Recurring' }} />
+      <Tabs.Screen name="notifications" options={{ href: null, headerShown: true, title: 'Notifications' }} />
+      <Tabs.Screen name="profile-edit" options={{ href: null, headerShown: true, title: 'Edit Profile' }} />
+      <Tabs.Screen name="security" options={{ href: null, headerShown: true, title: 'Security' }} />
+      <Tabs.Screen name="currencies" options={{ href: null, headerShown: true, title: 'Currency' }} />
+      <Tabs.Screen name="premium" options={{ href: null, headerShown: true, title: 'Premium' }} />
+      <Tabs.Screen name="device-settings" options={{ href: null, headerShown: true, title: 'Device Settings' }} />
     </Tabs>
   );
 }

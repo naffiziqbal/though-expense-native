@@ -2,16 +2,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Button } from '../components/ui/Button';
-import { BottomSheet } from '../components/ui/BottomSheet';
-import { Card } from '../components/ui/Card';
-import { Input } from '../components/ui/Input';
-import { Screen } from '../components/ui/Screen';
-import { fonts, fontSize, radius, spacing } from '../constants/theme';
-import { useTheme } from '../hooks/useTheme';
-import { api, getErrorMessage } from '../lib/api';
-import { toast } from '../store/toastStore';
-import { useAuthStore } from '../store/authStore';
+import { Button } from '../../components/ui/Button';
+import { BottomSheet } from '../../components/ui/BottomSheet';
+import { Card } from '../../components/ui/Card';
+import { Input } from '../../components/ui/Input';
+import { Screen } from '../../components/ui/Screen';
+import { fonts, fontSize, radius, spacing } from '../../constants/theme';
+import { useTheme } from '../../hooks/useTheme';
+import { api, getErrorMessage } from '../../lib/api';
+import { toast } from '../../store/toastStore';
+import { useAuthStore } from '../../store/authStore';
 
 export default function SecurityScreen() {
   const { colors, isDark } = useTheme();

@@ -1,21 +1,21 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
-import { BottomSheet } from '../components/ui/BottomSheet';
-import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
-import { EmptyState } from '../components/ui/EmptyState';
-import { Input } from '../components/ui/Input';
-import { Screen } from '../components/ui/Screen';
-import { SegmentedControl } from '../components/ui/SegmentedControl';
-import { CategoryIconBubble } from '../components/CategoryIconBubble';
-import { fonts, fontSize, radius, spacing } from '../constants/theme';
-import { useTheme } from '../hooks/useTheme';
-import { api, getErrorMessage } from '../lib/api';
-import type { DetectedRecurring, RecurringFrequency, RecurringRule } from '../lib/types';
-import { formatCurrency } from '../lib/utils';
-import { toast } from '../store/toastStore';
-import { useAuthStore } from '../store/authStore';
+import { BottomSheet } from '../../components/ui/BottomSheet';
+import { Button } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { Input } from '../../components/ui/Input';
+import { Screen } from '../../components/ui/Screen';
+import { SegmentedControl } from '../../components/ui/SegmentedControl';
+import { CategoryIconBubble } from '../../components/CategoryIconBubble';
+import { fonts, fontSize, radius, spacing } from '../../constants/theme';
+import { useTheme } from '../../hooks/useTheme';
+import { api, getErrorMessage } from '../../lib/api';
+import type { DetectedRecurring, RecurringFrequency, RecurringRule } from '../../lib/types';
+import { formatCurrency } from '../../lib/utils';
+import { toast } from '../../store/toastStore';
+import { useAuthStore } from '../../store/authStore';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 

@@ -13,6 +13,8 @@ import {
   budgetContextForMonth,
   budgetPaceLabel,
   budgetSpendTier,
+  CATEGORY_BUDGET_INPUT_HINT,
+  CATEGORY_BUDGET_INPUT_PLACEHOLDER,
   monthLabel,
 } from '../../lib/budgetDashboard';
 import { api, getErrorMessage } from '../../lib/api';
@@ -290,21 +292,30 @@ export default function BudgetScreen() {
 
       <View style={[styles.aiCard, { borderColor: `${colors.accent}44`, backgroundColor: colors.bgCard }]}>
         <Text style={{ color: colors.accent, fontSize: fontSize.xs, fontFamily: fonts.medium }}>Category budgets</Text>
-        <Text style={{ color: colors.textMuted, fontSize: fontSize.xs, marginTop: 2 }}>Natural language · e.g. Food 500, Rent 2000</Text>
-        <View style={{ flexDirection: 'row', gap: spacing.s2, marginTop: spacing.s3, alignItems: 'center' }}>
-          <View style={[styles.magicInput, { borderColor: colors.border, backgroundColor: colors.inputBg }]}>
-            <Ionicons name="sparkles" size={18} color={colors.accent} />
-            <TextInput
-              value={categoryText}
-              onChangeText={setCategoryText}
-              placeholder="Type limits…"
-              placeholderTextColor={colors.textMuted}
-              style={{ flex: 1, color: colors.textPrimary, fontSize: fontSize.sm, paddingVertical: spacing.s2 }}
-              onSubmitEditing={handleGenerate}
-            />
-          </View>
-          <Button title="Parse" onPress={handleGenerate} loading={parsing} disabled={!categoryText.trim()} size="sm" />
+        <Text style={{ color: colors.textMuted, fontSize: fontSize.xs, marginTop: spacing.s1, lineHeight: 18 }}>
+          {CATEGORY_BUDGET_INPUT_HINT}
+        </Text>
+        <View style={[styles.magicInput, { borderColor: colors.border, backgroundColor: colors.inputBg, marginTop: spacing.s3 }]}>
+          <Ionicons name="sparkles" size={18} color={colors.accent} style={{ marginTop: 2 }} />
+          <TextInput
+            value={categoryText}
+            onChangeText={setCategoryText}
+            placeholder={CATEGORY_BUDGET_INPUT_PLACEHOLDER}
+            placeholderTextColor={colors.textMuted}
+            multiline
+            textAlignVertical="top"
+            style={[styles.categoryBudgetTextArea, { color: colors.textPrimary }]}
+            blurOnSubmit={false}
+          />
         </View>
+        <Button
+          title="Parse"
+          onPress={handleGenerate}
+          loading={parsing}
+          disabled={!categoryText.trim()}
+          size="sm"
+          style={{ alignSelf: 'flex-end', marginTop: spacing.s2 }}
+        />
 
         {parsedCategories.length > 0 ? (
           <View style={{ marginTop: spacing.s3, gap: spacing.s2, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, paddingTop: spacing.s3 }}>
@@ -519,13 +530,22 @@ const styles = StyleSheet.create({
     padding: spacing.s4,
   },
   magicInput: {
-    flex: 1,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: spacing.s2,
     borderWidth: 1,
     borderRadius: radius.md,
     paddingHorizontal: spacing.s3,
+    paddingVertical: spacing.s3,
+  },
+  categoryBudgetTextArea: {
+    flex: 1,
+    minHeight: 88,
+    maxHeight: 140,
+    fontSize: fontSize.sm,
+    lineHeight: 20,
+    paddingTop: 0,
+    paddingBottom: 0,
   },
   totalRow: {
     flexDirection: 'row',

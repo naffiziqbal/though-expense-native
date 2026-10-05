@@ -2,16 +2,16 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { PurchasesOffering, PurchasesPackage } from 'react-native-purchases';
-import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
-import { Screen } from '../components/ui/Screen';
-import { fonts, fontSize, radius, spacing } from '../constants/theme';
-import { useTheme } from '../hooks/useTheme';
-import { api } from '../lib/api';
-import { billingAvailable, getPremiumOffering, purchasePremium, restorePurchases } from '../lib/billing';
-import { premiumPlansSubtitle } from '../lib/subscription';
-import { toast } from '../store/toastStore';
-import { useAuthStore } from '../store/authStore';
+import { Button } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
+import { Screen } from '../../components/ui/Screen';
+import { fonts, fontSize, radius, spacing } from '../../constants/theme';
+import { useTheme } from '../../hooks/useTheme';
+import { api } from '../../lib/api';
+import { billingAvailable, getPremiumOffering, purchasePremium, restorePurchases } from '../../lib/billing';
+import { premiumPlansSubtitle } from '../../lib/subscription';
+import { toast } from '../../store/toastStore';
+import { useAuthStore } from '../../store/authStore';
 
 const benefits = [
   { title: 'Unlimited AI advisor', desc: 'Ask anything about your money — why it changed, how to save' },
