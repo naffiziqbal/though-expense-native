@@ -355,6 +355,13 @@ class ApiClient {
     return response.data;
   }
 
+  async deleteExpensesBatch(
+    ids: string[]
+  ): Promise<{ success: boolean; message: string; data: { deleted: number; ids: string[] } }> {
+    const response = await this.client.post('/api/expenses/batch/delete', { ids });
+    return response.data;
+  }
+
   /** Returns raw file bytes (csv or pdf) for native saving/sharing. */
   async exportExpenses(format: 'csv' | 'pdf', from?: string, to?: string): Promise<ArrayBuffer> {
     const response = await this.client.get('/api/expenses/export', {

@@ -57,11 +57,17 @@ function appendExpenses(prev: Expense[], batch: Expense[]): Expense[] {
 const ExpenseListRow = React.memo(function ExpenseListRow({
   item,
   onPress,
+  onLongPress,
+  selectionMode,
+  selected,
   showDivider,
   colors,
 }: {
   item: ExpenseRowItem;
   onPress: () => void;
+  onLongPress?: () => void;
+  selectionMode?: boolean;
+  selected?: boolean;
   showDivider: boolean;
   colors: ThemeColors;
 }) {
@@ -69,11 +75,19 @@ const ExpenseListRow = React.memo(function ExpenseListRow({
   return (
     <Pressable
       onPress={onPress}
+      onLongPress={onLongPress}
+      delayLongPress={400}
       style={[
         styles.txRow,
+        selected && { backgroundColor: colors.accentSoft },
         showDivider && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider },
       ]}
     >
+      {selectionMode ? (
+        <View style={[styles.selectMark, { borderColor: selected ? colors.accent : colors.border }]}>
+          {selected ? <Ionicons name="checkmark" size={16} color={colors.accent} /> : null}
+        </View>
+      ) : null}
       <CategoryIconBubble category={item.category} size={40} />
       <View style={styles.txMain}>
         <Text style={[styles.txTitle, { color: colors.textPrimary }]} numberOfLines={1}>
@@ -95,10 +109,16 @@ const ExpenseDayBlock = React.memo(function ExpenseDayBlock({
   section,
   colors,
   onPressRow,
+  onLongPressRow,
+  selectionMode,
+  selectedIds,
 }: {
   section: ExpenseDaySection;
   colors: ThemeColors;
   onPressRow: (item: ExpenseRowItem) => void;
+  onLongPressRow: (item: ExpenseRowItem) => void;
+  selectionMode: boolean;
+  selectedIds: Set<string>;
 }) {
   const { code, value } = formatExpenseAmountParts(section.total, section.currency);
   return (
@@ -116,8 +136,11 @@ const ExpenseDayBlock = React.memo(function ExpenseDayBlock({
             key={item.id}
             item={item}
             colors={colors}
+            selectionMode={selectionMode}
+            selected={selectedIds.has(item.id)}
             showDivider={index < section.data.length - 1}
             onPress={() => onPressRow(item)}
+            onLongPress={() => onLongPressRow(item)}
           />
         ))}
       </Card>
@@ -181,6 +204,12 @@ export default function ExpensesScreen() {
   const [editSheetOpen, setEditSheetOpen] = useState(false);
   const [deleteSheetOpen, setDeleteSheetOpen] = useState(false);
   const [editForm, setEditForm] = useState({ description: '', amount: '', category: '', date: '' });
+
+  // Multi-select delete
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   // Export
   const [exportSheetOpen, setExportSheetOpen] = useState(false);
@@ -373,13 +402,69 @@ export default function ExpensesScreen() {
     setEditSheetOpen(true);
   }, []);
 
+  const exitSelection = useCallback(() => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  }, []);
+
+  const toggleSelected = useCallback((id: string) => {
+    if (id.startsWith('pending:')) return;
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const handleLongPressRow = useCallback(
+    (item: ExpenseRowItem) => {
+      if (item.id.startsWith('pending:')) return;
+      setSelectionMode(true);
+      setSelectedIds((prev) => new Set(prev).add(item.id));
+    },
+    []
+  );
+
   const handlePressRow = useCallback(
     (item: ExpenseRowItem) => {
       if (item.id.startsWith('pending:')) return;
+      if (selectionMode) {
+        toggleSelected(item.id);
+        return;
+      }
       handleEdit(item as Expense);
     },
-    [handleEdit]
+    [handleEdit, selectionMode, toggleSelected]
   );
+
+  useEffect(() => {
+    if (selectionMode && selectedIds.size === 0) {
+      setSelectionMode(false);
+    }
+  }, [selectionMode, selectedIds.size]);
+
+  const confirmBulkDelete = async () => {
+    const ids = [...selectedIds];
+    if (!ids.length) return;
+    setIsBulkDeleting(true);
+    try {
+      const response = await api.deleteExpensesBatch(ids);
+      if (response.success) {
+        const removed = new Set(response.data?.ids ?? ids);
+        toast.success(response.message || `Deleted ${removed.size} expenses`);
+        setExpenses((prev) => prev.filter((e) => !removed.has(e.id)));
+        setSearchResults((prev) => (prev ? prev.filter((e) => !removed.has(e.id)) : prev));
+        setTotal((t) => Math.max(0, t - removed.size));
+        setBulkDeleteOpen(false);
+        exitSelection();
+      }
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Failed to delete expenses'));
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
 
   const handleSaveEdit = async () => {
     if (!selectedExpense) return;
@@ -532,6 +617,33 @@ export default function ExpensesScreen() {
         </Pressable>
       ) : null}
 
+      {selectionMode ? (
+        <View style={[styles.selectionBar, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
+          <Pressable onPress={exitSelection} hitSlop={8} style={styles.selectionBarSide}>
+            <Text style={{ color: colors.textPrimary, fontFamily: fonts.semibold, fontSize: fontSize.sm }}>Cancel</Text>
+          </Pressable>
+          <Text style={{ color: colors.textPrimary, fontFamily: fonts.semibold, fontSize: fontSize.sm }}>
+            {selectedIds.size} selected
+          </Text>
+          <Pressable
+            onPress={() => selectedIds.size > 0 && setBulkDeleteOpen(true)}
+            hitSlop={8}
+            style={styles.selectionBarSide}
+            disabled={selectedIds.size === 0}
+          >
+            <Text
+              style={{
+                color: selectedIds.size > 0 ? colors.error : colors.textMuted,
+                fontFamily: fonts.semibold,
+                fontSize: fontSize.sm,
+              }}
+            >
+              Delete
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
+
       <View style={styles.headerRow}>
           <View style={styles.headerTitleCol}>
             <Text style={[styles.title, { color: colors.textPrimary }]}>Expenses</Text>
@@ -679,8 +791,11 @@ export default function ExpensesScreen() {
                   key={item.id}
                   item={item}
                   colors={colors}
+                  selectionMode={selectionMode}
+                  selected={selectedIds.has(item.id)}
                   showDivider={index < searchResults!.length - 1}
-                  onPress={() => handleEdit(item as unknown as Expense)}
+                  onPress={() => handlePressRow(item)}
+                  onLongPress={() => handleLongPressRow(item)}
                 />
               ))}
             </Card>
@@ -726,7 +841,14 @@ export default function ExpensesScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={onPullRefresh} tintColor={colors.accent} />
           }
           renderItem={({ item: section }) => (
-            <ExpenseDayBlock section={section} colors={colors} onPressRow={handlePressRow} />
+            <ExpenseDayBlock
+              section={section}
+              colors={colors}
+              onPressRow={handlePressRow}
+              onLongPressRow={handleLongPressRow}
+              selectionMode={selectionMode}
+              selectedIds={selectedIds}
+            />
           )}
         />
       )}
@@ -816,6 +938,25 @@ export default function ExpensesScreen() {
               setDeleteSheetOpen(true);
             }}
           />
+        </View>
+      </BottomSheet>
+
+      <BottomSheet visible={bulkDeleteOpen} onClose={() => setBulkDeleteOpen(false)} title="Delete expenses">
+        <View style={{ gap: spacing.s3 }}>
+          <Text style={{ color: colors.textPrimary }}>
+            Delete {selectedIds.size} expense{selectedIds.size === 1 ? '' : 's'}? This cannot be undone.
+          </Text>
+          <View style={{ flexDirection: 'row', gap: spacing.s2 }}>
+            <Button title="Cancel" variant="outline" style={{ flex: 1 }} onPress={() => setBulkDeleteOpen(false)} />
+            <Button
+              title={isBulkDeleting ? 'Deleting…' : 'Delete'}
+              variant="danger"
+              style={{ flex: 1 }}
+              onPress={confirmBulkDelete}
+              loading={isBulkDeleting}
+              disabled={isBulkDeleting}
+            />
+          </View>
         </View>
       </BottomSheet>
 
@@ -997,6 +1138,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.s4,
     paddingVertical: 13,
     minHeight: 44,
+  },
+  selectMark: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectionBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.s3,
+    paddingVertical: spacing.s2,
+  },
+  selectionBarSide: {
+    minWidth: 72,
   },
   txMain: {
     flex: 1,
