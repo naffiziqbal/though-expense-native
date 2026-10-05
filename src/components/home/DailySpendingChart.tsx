@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { fonts, fontSize, radius, spacing } from '../../constants/theme';
+import { fonts, fontSize, radius, shape, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 
 export type DailySpendBucket = {
@@ -74,7 +74,7 @@ export function DailySpendingChart({ buckets, dailyLimit }: Props) {
 
 const styles = StyleSheet.create({
   wrap: {
-    borderRadius: 16,
+    borderRadius: shape.card,
     paddingHorizontal: 14,
     paddingTop: 14,
     paddingBottom: 10,

@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { View } from 'react-native';
-import { radius } from '../constants/theme';
+import { shape } from '../constants/theme';
 import { useTheme } from '../hooks/useTheme';
 import { getCategoryIcon } from '../lib/categoryIcons';
 import { getCategoryBadgeColors, getCategoryChartColor } from '../lib/utils';
@@ -16,7 +16,7 @@ export function CategoryIconBubble({ category, size = 40 }: { category: string; 
       style={{
         width: size,
         height: size,
-        borderRadius: radius.md,
+        borderRadius: shape.icon,
         backgroundColor: bg,
         alignItems: 'center',
         justifyContent: 'center',

@@ -11,7 +11,7 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Screen } from '../../components/ui/Screen';
-import { fonts, fontSize, radius, spacing } from '../../constants/theme';
+import { fonts, fontSize, radius, shape, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { api } from '../../lib/api';
 import { pushHiddenTab } from '../../lib/hiddenTabNavigation';
@@ -502,7 +502,7 @@ const styles = StyleSheet.create({
   bellBtn: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: shape.pill,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -512,10 +512,10 @@ const styles = StyleSheet.create({
     right: 9,
     width: 8,
     height: 8,
-    borderRadius: 4,
+    borderRadius: shape.pill,
   },
   heroCard: {
-    borderRadius: 20,
+    borderRadius: shape.card,
     gap: spacing.s2,
   },
   heroTopRow: {
@@ -545,13 +545,13 @@ const styles = StyleSheet.create({
   },
   progressTrack: {
     height: 8,
-    borderRadius: 4,
+    borderRadius: shape.pill,
     overflow: 'visible',
     position: 'relative',
   },
   progressFill: {
     height: 8,
-    borderRadius: 4,
+    borderRadius: shape.pill,
   },
   paceMarker: {
     position: 'absolute',
@@ -575,7 +575,7 @@ const styles = StyleSheet.create({
   },
   statTile: {
     flex: 1,
-    borderRadius: 12,
+    borderRadius: shape.control,
     paddingHorizontal: 12,
     paddingVertical: 10,
     gap: 2,
@@ -588,7 +588,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.medium,
   },
   insightCard: {
-    borderRadius: 16,
+    borderRadius: shape.card,
     padding: 14,
     flexDirection: 'row',
     gap: 12,
@@ -622,7 +622,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   goalCard: {
-    borderRadius: 16,
+    borderRadius: shape.card,
     gap: spacing.s2,
   },
   goalTop: {
@@ -640,7 +640,7 @@ const styles = StyleSheet.create({
   goalIcon: {
     width: 36,
     height: 36,
-    borderRadius: 10,
+    borderRadius: shape.icon,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -654,12 +654,12 @@ const styles = StyleSheet.create({
   },
   goalTrack: {
     height: 6,
-    borderRadius: 3,
+    borderRadius: shape.pill,
     overflow: 'hidden',
   },
   goalFill: {
     height: 6,
-    borderRadius: 3,
+    borderRadius: shape.pill,
   },
   goalFoot: {
     flexDirection: 'row',

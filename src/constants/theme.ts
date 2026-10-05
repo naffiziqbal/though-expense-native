@@ -115,10 +115,21 @@ export const spacing = {
 
 export const radius = {
   sm: 8,
+  /** Controls, inputs, category icon wells (single squircle motive). */
   md: 13,
+  /** Cards, sheets, grouped list surfaces. */
   lg: 20,
   xl: 24,
+  /** Avatars, pills, FABs, nav orbs, circular badges only. */
   full: 9999,
+} as const;
+
+/** Use these instead of one-off pixel radii — keeps icon vs card vs circle consistent. */
+export const shape = {
+  icon: radius.md,
+  control: radius.md,
+  card: radius.lg,
+  pill: radius.full,
 } as const;
 
 export const fontSize = {

@@ -4,7 +4,7 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { PurchasesOffering, PurchasesPackage } from 'react-native-purchases';
 import { Button } from '../../components/ui/Button';
 import { Screen } from '../../components/ui/Screen';
-import { fonts, fontSize, radius, spacing } from '../../constants/theme';
+import { fonts, fontSize, radius, shape, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { api } from '../../lib/api';
 import { billingAvailable, getPremiumOffering, purchasePremium, restorePurchases } from '../../lib/billing';
@@ -329,7 +329,7 @@ const styles = StyleSheet.create({
   radio: {
     width: 22,
     height: 22,
-    borderRadius: 11,
+    borderRadius: shape.pill,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',

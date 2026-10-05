@@ -10,7 +10,7 @@ import { Card } from '../../components/ui/Card';
 import { DateField } from '../../components/ui/DateField';
 import { Screen } from '../../components/ui/Screen';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
-import { fonts, fontSize, radius, spacing } from '../../constants/theme';
+import { fonts, fontSize, radius, shape, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { api, getErrorMessage } from '../../lib/api';
 import { base64FromArrayBuffer, saveExportedFile } from '../../lib/exportFile';
@@ -728,7 +728,7 @@ const styles = StyleSheet.create({
   avatarSm: {
     width: 56,
     height: 56,
-    borderRadius: 28,
+    borderRadius: shape.pill,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',

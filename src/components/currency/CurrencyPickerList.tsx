@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { fonts, fontSize, radius, spacing } from '../../constants/theme';
+import { fonts, fontSize, radius, shape, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import type { Iso4217Currency } from '../../lib/iso4217';
 
@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
   radio: {
     width: 22,
     height: 22,
-    borderRadius: 11,
+    borderRadius: shape.icon,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',

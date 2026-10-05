@@ -23,7 +23,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { Input } from '../../components/ui/Input';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import { SelectSheet } from '../../components/ui/SelectSheet';
-import { fonts, fontSize, radius, spacing, type ThemeColors } from '../../constants/theme';
+import { fonts, fontSize, radius, shape, spacing, type ThemeColors } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { isCurrentlyOffline } from '../../hooks/useOutboxSync';
 import { api, getErrorMessage, isUnreachableError } from '../../lib/api';
@@ -1019,7 +1019,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 0,
     overflow: 'hidden',
-    borderRadius: 20,
+    borderRadius: shape.card,
   },
   list: {
     flex: 1,
@@ -1029,7 +1029,7 @@ const styles = StyleSheet.create({
   },
   dayCard: {
     overflow: 'hidden',
-    borderRadius: 16,
+    borderRadius: shape.card,
   },
   dayTotalCol: {
     alignItems: 'flex-end',
@@ -1076,7 +1076,7 @@ const styles = StyleSheet.create({
   iconSquare: {
     width: 44,
     height: 44,
-    borderRadius: 12,
+    borderRadius: shape.control,
     borderWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1121,7 +1121,7 @@ const styles = StyleSheet.create({
     right: -4,
     minWidth: 18,
     height: 18,
-    borderRadius: 9,
+    borderRadius: shape.pill,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,
@@ -1142,7 +1142,7 @@ const styles = StyleSheet.create({
   selectMark: {
     width: 22,
     height: 22,
-    borderRadius: 11,
+    borderRadius: shape.pill,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1152,7 +1152,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: radius.lg,
+    borderRadius: shape.card,
     paddingHorizontal: spacing.s3,
     paddingVertical: spacing.s2,
   },

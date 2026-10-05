@@ -1,6 +1,6 @@
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { fonts, fontSize, radius, spacing } from '../../constants/theme';
+import { fonts, fontSize, radius, shape, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { IMPORT_ASYNC_STEPS, phaseToStepIndex, type ImportJobPhase } from '../../lib/importDashboard';
 
@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
   badge: {
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: shape.pill,
     alignItems: 'center',
     justifyContent: 'center',
   },
