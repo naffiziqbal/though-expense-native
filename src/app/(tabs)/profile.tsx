@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
-import { useRouter, type Href } from 'expo-router';
+import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { BottomSheet } from '../../components/ui/BottomSheet';
@@ -14,11 +14,23 @@ import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { api, getErrorMessage } from '../../lib/api';
 import { base64FromArrayBuffer, saveExportedFile } from '../../lib/exportFile';
+import { ExpenseImportPreviewPanel } from '../../components/import/ExpenseImportPreviewPanel';
+import { ImportAsyncProgressPanel } from '../../components/import/ImportAsyncProgressPanel';
+import {
+  IMPORT_DATA_HINT,
+  isAsyncImportFile,
+  isCsvImportFileName,
+  type ImportJobPhase,
+} from '../../lib/importDashboard';
+import { isImportJobGoneError, outcomeFromImportJobStatus } from '../../lib/importJobLifecycle';
+import type { ExpenseImportPreview } from '../../lib/types';
+import * as DocumentPicker from 'expo-document-picker';
 import type { NotificationPreferences } from '../../lib/types';
 import { formatCurrency, getImageUrl } from '../../lib/utils';
 import { premiumPlansSubtitle } from '../../lib/subscription';
 import { useAuthStore } from '../../store/authStore';
 import { useOnboardingStore } from '../../store/onboardingStore';
+import { useImportJobStore } from '../../store/importJobStore';
 import { useThemeStore, type ThemeMode } from '../../store/themeStore';
 import { pushHiddenTab } from '../../lib/hiddenTabNavigation';
 import { toast } from '../../store/toastStore';
@@ -59,6 +71,16 @@ export default function ProfileScreen() {
   const [exportFrom, setExportFrom] = useState('');
   const [exportTo, setExportTo] = useState('');
   const [isExporting, setIsExporting] = useState(false);
+  const [importSheetOpen, setImportSheetOpen] = useState(false);
+  const [importPreview, setImportPreview] = useState<ExpenseImportPreview | null>(null);
+  const [importParsing, setImportParsing] = useState(false);
+  const [importApplying, setImportApplying] = useState(false);
+  const [importFileName, setImportFileName] = useState<string | null>(null);
+  const [importJobId, setImportJobId] = useState<string | null>(null);
+  const [importPhase, setImportPhase] = useState<ImportJobPhase>('queued');
+  const [importMessage, setImportMessage] = useState('');
+  const [importProgress, setImportProgress] = useState(0);
+  const [importCancelling, setImportCancelling] = useState(false);
 
   const avatarUrl = getImageUrl(user?.profilePicture || user?.profilePictureUrl);
   const shortId = user?.id?.slice(0, 8).toUpperCase() ?? '—';
@@ -121,6 +143,188 @@ export default function ProfileScreen() {
     if (!user?.id) return;
     await Clipboard.setStringAsync(user.id);
     toast.success('User ID copied');
+  };
+
+  const globalImportJobId = useImportJobStore((s) => s.jobId);
+  const globalImportMessage = useImportJobStore((s) => s.message);
+  const globalImportPhase = useImportJobStore((s) => s.phase);
+  const globalImportProgress = useImportJobStore((s) => s.progress);
+  const globalImportFileName = useImportJobStore((s) => s.fileName);
+  const startImportJob = useImportJobStore((s) => s.startJob);
+  const patchImportJob = useImportJobStore((s) => s.patchJob);
+  const clearImportJob = useImportJobStore((s) => s.clearJob);
+
+  const activeJobId = importJobId ?? globalImportJobId;
+  const displayMessage = importMessage || globalImportMessage;
+  const displayPhase = importJobId ? importPhase : globalImportPhase;
+  const displayProgress = importJobId ? importProgress : globalImportProgress;
+  const displayFileName = importFileName ?? globalImportFileName;
+  const importInProgress =
+    !!activeJobId && displayPhase !== 'failed' && displayPhase !== 'cancelled' && displayPhase !== 'done';
+  const backgroundImportActive = importInProgress && !importSheetOpen;
+
+  const openImport = () => {
+    if (!isPremium) {
+      toast.error('Import is available on Premium');
+      pushHiddenTab(router, '/premium', PROFILE_TAB);
+      return;
+    }
+    if (importInProgress) {
+      setImportSheetOpen(true);
+      return;
+    }
+    setImportPreview(null);
+    setImportFileName(null);
+    setImportJobId(null);
+    setImportPhase('queued');
+    setImportMessage('');
+    setImportProgress(0);
+    setImportSheetOpen(true);
+  };
+
+  const resetImportUi = useCallback(() => {
+    setImportJobId(null);
+    clearImportJob();
+    setImportPhase('queued');
+    setImportMessage('');
+    setImportProgress(0);
+    setImportFileName(null);
+  }, [clearImportJob]);
+
+  const handleCancelImportJob = async () => {
+    const id = activeJobId;
+    if (!id || importCancelling) return;
+    setImportCancelling(true);
+    try {
+      const res = await api.cancelImportJob(id);
+      toast.success(res.message || 'Import cancelled');
+      resetImportUi();
+      setImportPhase('cancelled');
+      setImportMessage(
+        res.message || 'Import cancelled. Nothing new was added from this file.'
+      );
+    } catch (error) {
+      if (isImportJobGoneError(error)) {
+        resetImportUi();
+        toast.success('Import is no longer running.');
+        return;
+      }
+      toast.error(getErrorMessage(error, 'Could not cancel import'));
+    } finally {
+      setImportCancelling(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      const id = globalImportJobId ?? importJobId;
+      if (!id) return;
+      let cancelled = false;
+      (async () => {
+        try {
+          const res = await api.getParseJobStatus(id);
+          if (cancelled) return;
+          const outcome = outcomeFromImportJobStatus(res.data);
+          if (outcome.type === 'active') {
+            patchImportJob({
+              phase: outcome.phase,
+              message: outcome.message,
+              progress: outcome.progress,
+            });
+            if (importJobId) {
+              if (outcome.phase) setImportPhase(outcome.phase);
+              if (outcome.message) setImportMessage(outcome.message);
+              if (typeof outcome.progress === 'number') setImportProgress(outcome.progress);
+            }
+            return;
+          }
+          resetImportUi();
+          if (outcome.type === 'completed') {
+            toast.success(outcome.message || 'Import complete');
+          }
+        } catch (error) {
+          if (cancelled) return;
+          if (isImportJobGoneError(error)) {
+            resetImportUi();
+          }
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [globalImportJobId, importJobId, patchImportJob, resetImportUi])
+  );
+
+  const pickImportFile = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['text/csv', 'text/comma-separated-values', 'application/pdf', 'text/plain', 'image/*'],
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+      const asset = result.assets[0];
+      const name = asset.name ?? 'import';
+      const mime = asset.mimeType || 'application/octet-stream';
+      setImportFileName(name);
+      setImportPreview(null);
+      setImportJobId(null);
+
+      if (isCsvImportFileName(name, mime)) {
+        setImportParsing(true);
+        try {
+          const res = await api.previewExpenseImport(asset.uri, mime, name);
+          if (res.success) setImportPreview(res.data);
+        } catch (error) {
+          toast.error(getErrorMessage(error, 'Could not read file'));
+        } finally {
+          setImportParsing(false);
+        }
+        return;
+      }
+
+      if (!isAsyncImportFile(name, mime)) {
+        toast.error('Choose CSV, PDF, or an image scan');
+        return;
+      }
+
+      setImportParsing(true);
+      setImportPhase('queued');
+      setImportMessage('Uploading your document…');
+      setImportProgress(0);
+      try {
+        const res = await api.enqueueImportDocument(asset.uri, mime, name);
+        if (res.success) {
+          const msg = res.data.message || 'Import started — reading your document…';
+          setImportJobId(res.data.jobId);
+          setImportMessage(msg);
+          startImportJob(res.data.jobId, name, msg);
+        }
+      } catch (error) {
+        toast.error(getErrorMessage(error, 'Could not start import'));
+        setImportPhase('failed');
+        setImportMessage(getErrorMessage(error, 'Could not start import'));
+      } finally {
+        setImportParsing(false);
+      }
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Could not open file picker'));
+    }
+  };
+
+  const handleApplyImport = async () => {
+    if (!importPreview?.rows.length) return;
+    setImportApplying(true);
+    try {
+      const res = await api.applyExpenseImport(importPreview.rows);
+      toast.success(res.message || `Imported ${res.data.imported} expenses`);
+      setImportSheetOpen(false);
+      setImportPreview(null);
+      setImportFileName(null);
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Import failed'));
+    } finally {
+      setImportApplying(false);
+    }
   };
 
   const handleExport = async () => {
@@ -290,8 +494,52 @@ export default function ProfileScreen() {
         </Pressable>
       </Card>
 
+      {backgroundImportActive ? (
+        <Card style={{ marginBottom: spacing.s3, gap: spacing.s2 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.s2 }}>
+            <ActivityIndicator size="small" color={colors.accent} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: colors.textPrimary, fontFamily: fonts.semibold, fontSize: fontSize.sm }}>
+                Import in progress
+              </Text>
+              <Text style={{ color: colors.textMuted, fontSize: fontSize.xs, marginTop: 2 }} numberOfLines={2}>
+                {displayFileName ? `${displayFileName} · ` : ''}
+                {displayMessage || 'Working on your file…'}
+              </Text>
+            </View>
+          </View>
+          <View style={{ flexDirection: 'row', gap: spacing.s2 }}>
+            <Button
+              title="View"
+              variant="outline"
+              style={{ flex: 1 }}
+              onPress={() => setImportSheetOpen(true)}
+            />
+            <Button
+              title={importCancelling ? 'Cancelling…' : 'Cancel import'}
+              variant="outline"
+              style={{ flex: 1 }}
+              onPress={() => void handleCancelImportJob()}
+              loading={importCancelling}
+              disabled={importCancelling}
+            />
+          </View>
+        </Card>
+      ) : null}
+
       <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>Data and help</Text>
       <Card padded={false}>
+        <Pressable
+          onPress={openImport}
+          style={[styles.row, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}
+        >
+          <Ionicons name="cloud-upload-outline" size={20} color={colors.textMuted} />
+          <Text style={[styles.rowTitle, { color: colors.textPrimary }]}>Import data</Text>
+          <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>
+            {isPremium ? (importInProgress ? 'Importing…' : 'CSV / PDF') : 'Premium'}
+          </Text>
+          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+        </Pressable>
         <Pressable
           onPress={() => setExportSheetOpen(true)}
           style={[styles.row, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}
@@ -312,6 +560,114 @@ export default function ProfileScreen() {
         <Ionicons name="log-out-outline" size={18} color={colors.error} />
         <Text style={{ color: colors.error, fontFamily: fonts.medium, fontSize: fontSize.sm }}>Log out</Text>
       </Pressable>
+
+      <BottomSheet
+        visible={importSheetOpen}
+        onClose={() => {
+          setImportSheetOpen(false);
+          setImportPreview(null);
+          setImportFileName(null);
+          if (activeJobId) toast.success('Import continues in the background.');
+        }}
+        title={activeJobId ? 'Import in progress' : importPreview ? 'Review import' : 'Import Expenses'}
+      >
+        <View style={{ gap: spacing.s3 }}>
+          {activeJobId || displayPhase === 'failed' || displayPhase === 'cancelled' ? (
+            <ImportAsyncProgressPanel
+              fileName={displayFileName}
+              phase={displayPhase}
+              message={displayMessage}
+              progress={displayProgress}
+            />
+          ) : null}
+          {!importPreview && !activeJobId && displayPhase !== 'failed' && displayPhase !== 'cancelled' ? (
+            <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, lineHeight: 20 }}>{IMPORT_DATA_HINT}</Text>
+          ) : null}
+          {!importPreview && !activeJobId && displayPhase !== 'failed' && displayPhase !== 'cancelled' ? (
+            <Button
+              title={importParsing ? 'Reading…' : 'Choose CSV, PDF, or photo'}
+              variant="outline"
+              onPress={pickImportFile}
+              loading={importParsing}
+              disabled={importApplying}
+            />
+          ) : null}
+          {importPreview ? <ExpenseImportPreviewPanel preview={importPreview} fileName={importFileName} /> : null}
+          {importPreview ? (
+            <Button
+              title="Choose another file"
+              variant="outline"
+              onPress={() => {
+                setImportPreview(null);
+                setImportFileName(null);
+                void pickImportFile();
+              }}
+              disabled={importParsing || importApplying}
+            />
+          ) : null}
+          {(displayPhase === 'failed' || displayPhase === 'cancelled') && !activeJobId ? (
+            <Button
+              title="Try another file"
+              variant="outline"
+              onPress={() => {
+                setImportPhase('queued');
+                setImportMessage('');
+                setImportProgress(0);
+                setImportFileName(null);
+                clearImportJob();
+              }}
+            />
+          ) : null}
+          {importInProgress ? (
+            <View style={{ flexDirection: 'row', gap: spacing.s2 }}>
+              <Button
+                title={importCancelling ? 'Cancelling…' : 'Cancel import'}
+                variant="outline"
+                style={{ flex: 1 }}
+                onPress={() => void handleCancelImportJob()}
+                loading={importCancelling}
+                disabled={importCancelling}
+              />
+              <Button
+                title="Close"
+                variant="outline"
+                style={{ flex: 1 }}
+                onPress={() => {
+                  setImportSheetOpen(false);
+                  setImportJobId(null);
+                  toast.success('Import continues in the background.');
+                }}
+              />
+            </View>
+          ) : (
+            <View style={{ flexDirection: 'row', gap: spacing.s2 }}>
+              <Button
+                title="Cancel"
+                variant="outline"
+                style={{ flex: 1 }}
+                onPress={() => {
+                  setImportSheetOpen(false);
+                  setImportPreview(null);
+                  setImportFileName(null);
+                }}
+              />
+              <Button
+                title={
+                  importApplying
+                    ? 'Importing…'
+                    : importPreview?.rows.length
+                      ? `Import ${importPreview.rows.length}`
+                      : 'Import'
+                }
+                style={{ flex: 1 }}
+                onPress={handleApplyImport}
+                loading={importApplying}
+                disabled={!importPreview?.rows.length || importParsing}
+              />
+            </View>
+          )}
+        </View>
+      </BottomSheet>
 
       <BottomSheet visible={exportSheetOpen} onClose={() => setExportSheetOpen(false)} title="Export Expenses">
         <View style={{ gap: spacing.s3 }}>

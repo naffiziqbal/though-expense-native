@@ -21,6 +21,7 @@ import { configureBilling, identifyBilling } from '../lib/billing';
 import { syncQuickActions } from '../lib/quickActions';
 import { Sentry, initSentry, setSentryUser } from '../lib/sentry';
 import { useOutboxSync } from '../hooks/useOutboxSync';
+import { useImportJobSync } from '../hooks/useImportJobSync';
 import { usePendingParseSync } from '../hooks/usePendingParseSync';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { useTheme } from '../hooks/useTheme';
@@ -35,6 +36,7 @@ function RootLayout() {
   const checkAuth = useAuthStore((s) => s.checkAuth);
   const userId = useAuthStore((s) => s.user?.id);
   usePendingParseSync();
+  useImportJobSync();
   usePushNotifications();
   const { isOffline, queuedCount } = useOutboxSync();
   const [fontsLoaded] = useFonts({
