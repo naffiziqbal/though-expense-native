@@ -128,13 +128,13 @@ export default function TabsLayout() {
       <Tabs.Screen name="budget" options={{ href: null }} />
       <Tabs.Screen name="goals" options={{ href: null }} />
       <Tabs.Screen name="assistant" options={{ href: null }} />
-      <Tabs.Screen name="recurring" options={{ href: null, headerShown: true, title: 'Recurring' }} />
+      <Tabs.Screen name="recurring" options={{ href: null }} />
       <Tabs.Screen name="notifications" options={{ href: null, headerShown: true, title: 'Notifications' }} />
       <Tabs.Screen name="profile-edit" options={{ href: null, headerShown: true, title: 'Edit Profile' }} />
-      <Tabs.Screen name="security" options={{ href: null, headerShown: true, title: 'Security' }} />
-      <Tabs.Screen name="currencies" options={{ href: null, headerShown: true, title: 'Currency' }} />
-      <Tabs.Screen name="premium" options={{ href: null, headerShown: true, title: 'Premium' }} />
-      <Tabs.Screen name="device-settings" options={{ href: null, headerShown: true, title: 'Device Settings' }} />
+      <Tabs.Screen name="security" options={{ href: null }} />
+      <Tabs.Screen name="currencies" options={{ href: null }} />
+      <Tabs.Screen name="premium" options={{ href: null }} />
+      <Tabs.Screen name="device-settings" options={{ href: null }} />
     </Tabs>
   );
 }

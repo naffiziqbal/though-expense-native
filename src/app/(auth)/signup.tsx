@@ -6,11 +6,11 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Screen } from '../../components/ui/Screen';
-import { SelectSheet } from '../../components/ui/SelectSheet';
 import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { api, getErrorMessage } from '../../lib/api';
-import { CURRENCIES, getDefaultCurrency } from '../../lib/currencies';
+import { getDefaultCurrency } from '../../lib/currencies';
+import { CurrencyPickerField } from '../../components/currency/CurrencyPickerField';
 import { toast } from '../../store/toastStore';
 import { useAuthStore } from '../../store/authStore';
 import { useOnboardingStore } from '../../store/onboardingStore';
@@ -127,12 +127,7 @@ export default function SignupScreen() {
           </View>
         </View>
 
-        <SelectSheet
-          value={currency}
-          options={CURRENCIES.map((c) => ({ value: c.value, label: c.label }))}
-          onChange={setCurrency}
-          title="Select Currency"
-        />
+        <CurrencyPickerField value={currency} onChange={setCurrency} title="Select currency" />
 
         <Button title="Get Started" onPress={handleSubmit} loading={isLoading} disabled={!isPasswordValid} size="lg" />
 

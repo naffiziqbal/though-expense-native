@@ -9,6 +9,7 @@ import { Screen } from '../../components/ui/Screen';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
+import { pushHiddenTab } from '../../lib/hiddenTabNavigation';
 import {
   buildPrimaryInsight,
   buildWeeklySpendingBuckets,
@@ -238,7 +239,7 @@ export default function InsightsScreen() {
           </Text>
           <View style={styles.insightActions}>
             <Pressable
-              onPress={() => router.push('/assistant')}
+              onPress={() => pushHiddenTab(router, '/assistant', '/(tabs)/insights')}
               style={[styles.chipPrimary, { backgroundColor: colors.accent, flex: 1, minWidth: 0 }]}
             >
               <Text style={{ color: '#fff', fontSize: fontSize.sm, fontFamily: fonts.medium }} numberOfLines={1}>
@@ -431,7 +432,7 @@ export default function InsightsScreen() {
             </Text>
           </View>
           <Pressable
-            onPress={() => router.push('/recurring')}
+            onPress={() => pushHiddenTab(router, '/recurring', '/(tabs)/insights')}
             style={[styles.recurringBtn, { borderColor: colors.border }]}
           >
             <Text style={{ color: colors.textPrimary, fontSize: fontSize.xs, fontFamily: fonts.medium }}>Log automatically</Text>

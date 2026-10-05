@@ -14,6 +14,7 @@ import { Screen } from '../../components/ui/Screen';
 import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { api } from '../../lib/api';
+import { pushHiddenTab } from '../../lib/hiddenTabNavigation';
 import { usePendingExpenses } from '../../hooks/usePendingExpenses';
 import { useTourTarget } from '../../hooks/useTourTarget';
 import {
@@ -291,7 +292,7 @@ export default function HomeScreen() {
             <Text style={[styles.heroAmount, { color: colors.textPrimary }]}>
               {loading ? '…' : formatCurrency(merged.totalSpent, currency)}
             </Text>
-            <Pressable onPress={() => router.push('/budget')} style={{ marginTop: spacing.s2 }}>
+            <Pressable onPress={() => pushHiddenTab(router, '/budget', '/(tabs)')} style={{ marginTop: spacing.s2 }}>
               <Text style={{ color: colors.accent, fontFamily: fonts.semibold, fontSize: fontSize.sm }}>
                 Set a monthly budget →
               </Text>
@@ -302,7 +303,7 @@ export default function HomeScreen() {
 
       {featuredInsight ? (
         <Pressable
-          onPress={() => router.push('/assistant')}
+          onPress={() => pushHiddenTab(router, '/assistant', '/(tabs)')}
           style={[styles.insightCard, { backgroundColor: insightPanelBg }]}
         >
           <Ionicons name="sparkles" size={20} color={colors.accent} style={{ marginTop: 2 }} />
@@ -332,7 +333,7 @@ export default function HomeScreen() {
         <>
           <View style={styles.sectionHead}>
             <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Savings goal</Text>
-            <Pressable onPress={() => router.push('/goals')}>
+            <Pressable onPress={() => pushHiddenTab(router, '/goals', '/(tabs)')}>
               <Text style={{ color: colors.accent, fontFamily: fonts.semibold, fontSize: fontSize.sm }}>View all</Text>
             </Pressable>
           </View>
@@ -370,7 +371,7 @@ export default function HomeScreen() {
                 to go
               </Text>
               <Pressable
-                onPress={() => router.push('/goals')}
+                onPress={() => pushHiddenTab(router, '/goals', '/(tabs)')}
                 style={[styles.goalChip, { backgroundColor: insightPanelBg }]}
               >
                 <Text style={{ color: colors.accent, fontFamily: fonts.semibold, fontSize: fontSize.xs }}>Add funds</Text>

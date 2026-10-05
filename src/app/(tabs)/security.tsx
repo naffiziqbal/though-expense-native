@@ -4,18 +4,20 @@ import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../components/ui/Button';
 import { BottomSheet } from '../../components/ui/BottomSheet';
-import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Screen } from '../../components/ui/Screen';
 import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { api, getErrorMessage } from '../../lib/api';
+import { useScreenBack } from '../../lib/hiddenTabNavigation';
+import { DELETE_ACCOUNT_WARNING, SECURITY_PAGE_HINT } from '../../lib/securityDashboard';
 import { toast } from '../../store/toastStore';
 import { useAuthStore } from '../../store/authStore';
 
 export default function SecurityScreen() {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const router = useRouter();
+  const goBack = useScreenBack('/(tabs)/profile');
   const logout = useAuthStore((s) => s.logout);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -79,21 +81,30 @@ export default function SecurityScreen() {
   };
 
   return (
-    <Screen keyboardAvoiding>
-      <Card style={{ alignItems: 'center', paddingVertical: spacing.s6 }}>
-        <View style={[styles.iconBubble, { backgroundColor: isDark ? 'rgba(70, 180, 120, 0.2)' : '#D1FAE5' }]}>
-          <Ionicons name="shield-checkmark" size={26} color={isDark ? '#7BD8A5' : '#059669'} />
+    <Screen safeTop keyboardAvoiding contentStyle={{ gap: spacing.s3 }}>
+      <View style={styles.pageHeader}>
+        <Pressable onPress={goBack} hitSlop={8} style={styles.backBtn}>
+          <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
+        </Pressable>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={{ color: colors.textPrimary, fontFamily: fonts.semibold, fontSize: fontSize.md }}>Security</Text>
+          <Text style={{ color: colors.textMuted, fontSize: fontSize.xs, marginTop: 2 }}>{SECURITY_PAGE_HINT}</Text>
         </View>
-        <Text style={{ color: colors.textPrimary, fontSize: fontSize.lg, fontFamily: fonts.bold, marginTop: spacing.s3 }}>
-          Security
-        </Text>
-        <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, marginTop: 4, textAlign: 'center' }}>
-          Change your password to keep your account secure
-        </Text>
-      </Card>
+      </View>
 
-      <Card style={{ gap: spacing.s3 }}>
-        <Text style={{ color: colors.textPrimary, fontFamily: fonts.semibold, fontSize: fontSize.md }}>Change Password</Text>
+      <View style={[styles.infoCard, { borderColor: `${colors.accent}44`, backgroundColor: colors.bgCard }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.s3 }}>
+          <View style={[styles.iconWrap, { backgroundColor: colors.accentSoft }]}>
+            <Ionicons name="shield-checkmark" size={24} color={colors.accent} />
+          </View>
+          <Text style={{ flex: 1, color: colors.textSecondary, fontSize: fontSize.xs, lineHeight: 18 }}>
+            Use a unique password you don&apos;t reuse elsewhere. You&apos;ll stay signed in on this device after updating.
+          </Text>
+        </View>
+      </View>
+
+      <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>Password</Text>
+      <View style={[styles.formCard, { borderColor: colors.border, backgroundColor: colors.bgCard, gap: spacing.s3 }]}>
         <Input
           label="Current password"
           placeholder="Enter current password"
@@ -109,7 +120,7 @@ export default function SecurityScreen() {
         />
         <Input
           label="New password"
-          placeholder="Enter new password (min 6 characters)"
+          placeholder="At least 6 characters"
           value={newPassword}
           onChangeText={setNewPassword}
           secureTextEntry={!showNew}
@@ -130,31 +141,27 @@ export default function SecurityScreen() {
         />
         {error ? <Text style={{ color: colors.error, fontSize: fontSize.sm }}>{error}</Text> : null}
         <Button
-          title="Update Password"
+          title="Update password"
           size="lg"
           onPress={handleSubmit}
           loading={isSaving}
           disabled={!currentPassword || !newPassword || !confirmPassword}
         />
-      </Card>
+      </View>
 
-      {/* Danger zone */}
-      <Card style={{ gap: spacing.s3, borderColor: colors.error, borderWidth: 1 }}>
-        <Text style={{ color: colors.error, fontFamily: fonts.semibold, fontSize: fontSize.md }}>Danger Zone</Text>
-        <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }}>
-          Permanently delete your account and all data — expenses, budgets, insights and your profile. This cannot be
-          undone.
+      <Text style={[styles.sectionLabel, { color: colors.error }]}>Danger zone</Text>
+      <View style={[styles.formCard, { borderColor: `${colors.error}55`, backgroundColor: colors.bgCard, gap: spacing.s3 }]}>
+        <Text style={{ color: colors.textSecondary, fontSize: fontSize.xs, lineHeight: 18 }}>
+          Permanently delete your account, expenses, budgets, goals, and insights. This cannot be undone.
         </Text>
         <Button title="Delete my account" variant="danger" onPress={() => setDeleteSheetOpen(true)} />
-      </Card>
+      </View>
 
       <BottomSheet visible={deleteSheetOpen} onClose={() => setDeleteSheetOpen(false)} title="Delete account?">
         <View style={{ gap: spacing.s3 }}>
-          <Text style={{ color: colors.textSecondary }}>
-            This permanently erases your account and everything in it. If you have an active subscription, cancel
-            it in Google Play first — deleting your account does not cancel it. Enter your password to confirm.
-          </Text>
+          <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, lineHeight: 20 }}>{DELETE_ACCOUNT_WARNING}</Text>
           <Input
+            label="Password"
             placeholder="Your password"
             value={deletePassword}
             onChangeText={setDeletePassword}
@@ -179,11 +186,33 @@ export default function SecurityScreen() {
 }
 
 const styles = StyleSheet.create({
-  iconBubble: {
-    width: 56,
-    height: 56,
+  pageHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.s2,
+    marginBottom: spacing.s1,
+  },
+  backBtn: { marginLeft: -spacing.s1, marginTop: 2 },
+  infoCard: {
+    borderWidth: 1,
     borderRadius: radius.lg,
+    padding: spacing.s4,
+  },
+  iconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  sectionLabel: {
+    fontSize: fontSize.xs,
+    fontFamily: fonts.medium,
+    marginLeft: spacing.s1,
+  },
+  formCard: {
+    borderWidth: 1,
+    borderRadius: radius.lg,
+    padding: spacing.s4,
   },
 });

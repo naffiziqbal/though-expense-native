@@ -20,7 +20,10 @@ import { premiumPlansSubtitle } from '../../lib/subscription';
 import { useAuthStore } from '../../store/authStore';
 import { useOnboardingStore } from '../../store/onboardingStore';
 import { useThemeStore, type ThemeMode } from '../../store/themeStore';
+import { pushHiddenTab } from '../../lib/hiddenTabNavigation';
 import { toast } from '../../store/toastStore';
+
+const PROFILE_TAB: Href = '/(tabs)/profile';
 
 function themeLabel(mode: ThemeMode): string {
   if (mode === 'system') return 'System';
@@ -173,7 +176,7 @@ export default function ProfileScreen() {
   const renderNavRow = (row: NavRow) => (
     <Pressable
       key={row.title}
-      onPress={() => router.push(row.href)}
+      onPress={() => pushHiddenTab(router, row.href, PROFILE_TAB)}
       style={[styles.row, !row.last && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}
     >
       <Ionicons name={row.icon} size={20} color={colors.textMuted} />
@@ -206,7 +209,7 @@ export default function ProfileScreen() {
           </Pressable>
         </View>
         <Pressable
-          onPress={() => router.push('/profile-edit')}
+          onPress={() => pushHiddenTab(router, '/profile-edit', PROFILE_TAB)}
           style={[styles.editBtn, { borderColor: colors.border }]}
         >
           <Text style={{ color: colors.textPrimary, fontSize: fontSize.sm, fontFamily: fonts.medium }}>Edit</Text>
@@ -225,11 +228,11 @@ export default function ProfileScreen() {
           </Text>
         </View>
         {!isPremium ? (
-          <Pressable onPress={() => router.push('/premium')} style={[styles.seePlansBtn, { backgroundColor: colors.accent }]}>
+          <Pressable onPress={() => pushHiddenTab(router, '/premium', PROFILE_TAB)} style={[styles.seePlansBtn, { backgroundColor: colors.accent }]}>
             <Text style={{ color: colors.onAccent, fontSize: fontSize.sm, fontFamily: fonts.medium }}>See plans</Text>
           </Pressable>
         ) : (
-          <Pressable onPress={() => router.push('/premium')} style={[styles.editBtn, { borderColor: colors.border }]}>
+          <Pressable onPress={() => pushHiddenTab(router, '/premium', PROFILE_TAB)} style={[styles.editBtn, { borderColor: colors.border }]}>
             <Text style={{ color: colors.textPrimary, fontSize: fontSize.sm }}>Manage</Text>
           </Pressable>
         )}
@@ -271,7 +274,7 @@ export default function ProfileScreen() {
           )}
         </View>
         <Pressable
-          onPress={() => router.push('/device-settings')}
+          onPress={() => pushHiddenTab(router, '/device-settings', PROFILE_TAB)}
           style={[styles.row, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}
         >
           <Ionicons name="moon-outline" size={20} color={colors.textMuted} />
@@ -279,7 +282,7 @@ export default function ProfileScreen() {
           <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>{themeLabel(themeMode)}</Text>
           <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
         </Pressable>
-        <Pressable onPress={() => router.push('/security')} style={styles.row}>
+        <Pressable onPress={() => pushHiddenTab(router, '/security', PROFILE_TAB)} style={styles.row}>
           <Ionicons name="shield-checkmark-outline" size={20} color={colors.textMuted} />
           <Text style={[styles.rowTitle, { color: colors.textPrimary }]}>Security</Text>
           <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>Password</Text>

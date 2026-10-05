@@ -1,41 +1,29 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { CategoryIconBubble } from '../../components/CategoryIconBubble';
 import { BottomSheet } from '../../components/ui/BottomSheet';
 import { Button } from '../../components/ui/Button';
-import { Card } from '../../components/ui/Card';
-import { EmptyState } from '../../components/ui/EmptyState';
 import { Input } from '../../components/ui/Input';
 import { Screen } from '../../components/ui/Screen';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
-import { CategoryIconBubble } from '../../components/CategoryIconBubble';
 import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { api, getErrorMessage } from '../../lib/api';
+import { useScreenBack } from '../../lib/hiddenTabNavigation';
+import {
+  RECURRING_PAGE_HINT,
+  describeRecurringSchedule,
+  formatRecurringNextRun,
+  normalizeRecurringDescription,
+  summarizeRecurringRules,
+} from '../../lib/recurringDashboard';
 import type { DetectedRecurring, RecurringFrequency, RecurringRule } from '../../lib/types';
 import { formatCurrency } from '../../lib/utils';
 import { toast } from '../../store/toastStore';
 import { useAuthStore } from '../../store/authStore';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-function normalize(text: string): string {
-  return text.toLowerCase().replace(/\s+/g, ' ').trim();
-}
-
-function describeSchedule(rule: RecurringRule): string {
-  if (rule.frequency === 'weekly') {
-    return `Every ${WEEKDAYS[rule.dayOfWeek ?? 0]}`;
-  }
-  const day = rule.dayOfMonth;
-  return day ? `Monthly on day ${day}` : 'Monthly';
-}
-
-function formatNextRun(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-}
 
 interface DraftState {
   description: string;
@@ -49,6 +37,7 @@ interface DraftState {
 
 export default function RecurringScreen() {
   const { colors } = useTheme();
+  const goBack = useScreenBack('/(tabs)/profile');
   const user = useAuthStore((s) => s.user);
   const fallbackCurrency = user?.currency || 'USD';
 
@@ -81,11 +70,12 @@ export default function RecurringScreen() {
     void load();
   }, [load]);
 
-  // Hide suggestions the user has already automated.
   const suggestions = useMemo(() => {
-    const automated = new Set(rules.map((r) => normalize(r.description)));
-    return detected.filter((d) => !automated.has(normalize(d.description)));
+    const automated = new Set(rules.map((r) => normalizeRecurringDescription(r.description)));
+    return detected.filter((d) => !automated.has(normalizeRecurringDescription(d.description)));
   }, [detected, rules]);
+
+  const summary = useMemo(() => summarizeRecurringRules(rules), [rules]);
 
   const openDraft = (item: DetectedRecurring) => {
     const lastDate = new Date(item.lastDate);
@@ -175,129 +165,149 @@ export default function RecurringScreen() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <Screen>
+  const renderRule = (rule: RecurringRule, showBorder: boolean) => (
+    <View
+      key={rule.id}
+      style={[styles.ruleBlock, showBorder && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.s3 }}>
+        <CategoryIconBubble category={rule.category} size={40} />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={{ color: colors.textPrimary, fontFamily: fonts.semibold, fontSize: fontSize.sm }} numberOfLines={1}>
+            {rule.description}
+          </Text>
+          <Text style={{ color: colors.textMuted, fontSize: fontSize.xs, marginTop: 2 }}>
+            {describeRecurringSchedule(rule)}
+            {rule.isActive ? ` · next ${formatRecurringNextRun(rule.nextRunAt)}` : ' · paused'}
+          </Text>
+        </View>
+        <Text style={{ color: colors.textPrimary, fontFamily: fonts.semibold, fontSize: fontSize.sm }}>
+          {formatCurrency(rule.amount, rule.currency)}
+        </Text>
+      </View>
+
+      <View style={[styles.actionBar, { borderTopColor: colors.border }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.s2, flex: 1 }}>
+          <Switch
+            value={rule.isActive}
+            disabled={busyId === rule.id}
+            onValueChange={() => togglePaused(rule)}
+            trackColor={{ true: colors.accent, false: colors.border }}
+            thumbColor={colors.bgCard}
+          />
+          <Text style={{ color: colors.textSecondary, fontSize: fontSize.xs }}>{rule.isActive ? 'Active' : 'Paused'}</Text>
+        </View>
+        <Pressable
+          onPress={() => logNow(rule)}
+          disabled={busyId === rule.id}
+          hitSlop={6}
+          style={[styles.chip, { borderColor: colors.border }]}
+        >
+          <Ionicons name="add" size={14} color={colors.accent} />
+          <Text style={{ color: colors.accent, fontSize: fontSize.xs, fontFamily: fonts.semibold }}>Log now</Text>
+        </Pressable>
+        <Pressable onPress={() => remove(rule)} disabled={busyId === rule.id} hitSlop={8}>
+          <Ionicons name="trash-outline" size={18} color={colors.textMuted} />
+        </Pressable>
+      </View>
+    </View>
+  );
+
+  return (
+    <Screen safeTop refreshing={refreshing} onRefresh={() => load(true)} contentStyle={{ gap: spacing.s3 }}>
+      <View style={styles.pageHeader}>
+        <Pressable onPress={goBack} hitSlop={8} style={styles.backBtn}>
+          <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
+        </Pressable>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={{ color: colors.textPrimary, fontFamily: fonts.semibold, fontSize: fontSize.md }}>Recurring</Text>
+          <Text style={{ color: colors.textMuted, fontSize: fontSize.xs, marginTop: 2 }}>{RECURRING_PAGE_HINT}</Text>
+        </View>
+      </View>
+
+      {isLoading ? (
         <View style={{ paddingVertical: spacing.s8, alignItems: 'center' }}>
           <ActivityIndicator color={colors.accent} />
         </View>
-      </Screen>
-    );
-  }
-
-  return (
-    <Screen refreshing={refreshing} onRefresh={() => load(true)}>
-      {rules.length === 0 && suggestions.length === 0 ? (
-        <EmptyState
-          icon="repeat"
-          title="No recurring expenses yet"
-          message="Once you've logged the same subscription or bill for a few months, it'll show up here ready to automate."
-        />
-      ) : null}
-
-      {rules.length > 0 ? (
-        <View style={{ gap: spacing.s2 }}>
-          <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>AUTOMATIC</Text>
-          <View style={{ gap: spacing.s2 }}>
-            {rules.map((rule) => (
-              <Card key={rule.id} style={{ gap: spacing.s3 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.s3 }}>
-                  <CategoryIconBubble category={rule.category} size={40} />
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text
-                      style={{ color: colors.textPrimary, fontFamily: fonts.semibold, fontSize: fontSize.md }}
-                      numberOfLines={1}
-                    >
-                      {rule.description}
-                    </Text>
-                    <Text style={{ color: colors.textSecondary, fontSize: fontSize.xs }}>
-                      {describeSchedule(rule)}
-                      {rule.isActive ? ` · next ${formatNextRun(rule.nextRunAt)}` : ' · paused'}
-                    </Text>
-                  </View>
-                  <Text style={{ color: colors.textPrimary, fontFamily: fonts.bold }}>
-                    {formatCurrency(rule.amount, rule.currency)}
-                  </Text>
-                </View>
-
-                <View style={[styles.actionBar, { borderTopColor: colors.border }]}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.s2, flex: 1 }}>
-                    <Switch
-                      value={rule.isActive}
-                      disabled={busyId === rule.id}
-                      onValueChange={() => togglePaused(rule)}
-                      trackColor={{ true: colors.accent, false: colors.border }}
-                      thumbColor={colors.bgCard}
-                    />
-                    <Text style={{ color: colors.textSecondary, fontSize: fontSize.xs }}>
-                      {rule.isActive ? 'Active' : 'Paused'}
-                    </Text>
-                  </View>
-                  <Pressable
-                    onPress={() => logNow(rule)}
-                    disabled={busyId === rule.id}
-                    hitSlop={6}
-                    style={[styles.chip, { borderColor: colors.border }]}
-                  >
-                    <Ionicons name="add" size={14} color={colors.accent} />
-                    <Text style={{ color: colors.accent, fontSize: fontSize.xs, fontFamily: fonts.semibold }}>
-                      Log now
-                    </Text>
-                  </Pressable>
-                  <Pressable onPress={() => remove(rule)} disabled={busyId === rule.id} hitSlop={8}>
-                    <Ionicons name="trash-outline" size={18} color={colors.textMuted} />
-                  </Pressable>
-                </View>
-              </Card>
-            ))}
-          </View>
+      ) : rules.length === 0 && suggestions.length === 0 ? (
+        <View style={[styles.emptyCard, { borderColor: colors.border, backgroundColor: colors.bgCard }]}>
+          <Ionicons name="repeat" size={28} color={colors.accent} />
+          <Text style={{ color: colors.textPrimary, fontFamily: fonts.medium, fontSize: fontSize.sm, marginTop: spacing.s3 }}>
+            No recurring expenses yet
+          </Text>
+          <Text style={{ color: colors.textSecondary, fontSize: fontSize.xs, marginTop: spacing.s1, lineHeight: 18, textAlign: 'center' }}>
+            Log the same subscription or bill for a few months and we&apos;ll suggest automating it here.
+          </Text>
         </View>
-      ) : null}
+      ) : (
+        <>
+          {summary.total > 0 ? (
+            <View style={[styles.summaryCard, { borderColor: `${colors.accent}44`, backgroundColor: colors.bgCard }]}>
+              <Text style={{ color: colors.textMuted, fontSize: fontSize.xs, fontFamily: fonts.medium }}>Automated</Text>
+              <Text style={{ color: colors.textPrimary, fontFamily: fonts.semibold, fontSize: 28, marginTop: 4 }}>
+                {summary.active.length}
+                <Text style={{ fontSize: fontSize.md, color: colors.textMuted }}> active</Text>
+              </Text>
+              {summary.next ? (
+                <Text style={{ color: colors.textSecondary, fontSize: fontSize.xs, marginTop: spacing.s1 }} numberOfLines={1}>
+                  Next: {summary.next.description} · {formatRecurringNextRun(summary.next.nextRunAt)}
+                </Text>
+              ) : (
+                <Text style={{ color: colors.textSecondary, fontSize: fontSize.xs, marginTop: spacing.s1 }}>All rules paused</Text>
+              )}
+            </View>
+          ) : null}
 
-      {suggestions.length > 0 ? (
-        <View style={{ gap: spacing.s2 }}>
-          <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>DETECTED IN YOUR HISTORY</Text>
-          <Card padded={false}>
-            {suggestions.map((item, i) => (
-              <View
-                key={item.description}
-                style={[
-                  styles.suggestionRow,
-                  i < suggestions.length - 1 && {
-                    borderBottomWidth: StyleSheet.hairlineWidth,
-                    borderBottomColor: colors.border,
-                  },
-                ]}
-              >
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text
-                    style={{ color: colors.textPrimary, fontFamily: fonts.medium, fontSize: fontSize.sm }}
-                    numberOfLines={1}
-                  >
-                    {item.description}
-                  </Text>
-                  <Text style={{ color: colors.textMuted, fontSize: fontSize.xs }}>
-                    {item.category} · seen {item.monthsSeen} months · ~
-                    {formatCurrency(item.averageAmount, item.currency)}
-                  </Text>
-                </View>
-                <Pressable onPress={() => openDraft(item)} style={[styles.chip, { borderColor: colors.accent }]}>
-                  <Ionicons name="repeat" size={14} color={colors.accent} />
-                  <Text style={{ color: colors.accent, fontSize: fontSize.xs, fontFamily: fonts.semibold }}>
-                    Automate
-                  </Text>
-                </Pressable>
+          {rules.length > 0 ? (
+            <View style={{ gap: spacing.s2 }}>
+              <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>Your rules</Text>
+              <View style={[styles.listCard, { borderColor: colors.border, backgroundColor: colors.bgCard }]}>
+                {rules.map((rule, i) => renderRule(rule, i < rules.length - 1))}
               </View>
-            ))}
-          </Card>
-        </View>
-      ) : null}
+            </View>
+          ) : null}
+
+          {suggestions.length > 0 ? (
+            <View style={{ gap: spacing.s2 }}>
+              <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>Suggested from history</Text>
+              <View style={[styles.listCard, { borderColor: colors.border, backgroundColor: colors.bgCard }]}>
+                {suggestions.map((item, i) => (
+                  <View
+                    key={item.description}
+                    style={[
+                      styles.suggestionRow,
+                      i < suggestions.length - 1 && {
+                        borderBottomWidth: StyleSheet.hairlineWidth,
+                        borderBottomColor: colors.border,
+                      },
+                    ]}
+                  >
+                    <CategoryIconBubble category={item.category} size={36} />
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={{ color: colors.textPrimary, fontFamily: fonts.medium, fontSize: fontSize.sm }} numberOfLines={1}>
+                        {item.description}
+                      </Text>
+                      <Text style={{ color: colors.textMuted, fontSize: fontSize.xs, marginTop: 2 }}>
+                        {item.category} · {item.monthsSeen} mo · ~{formatCurrency(item.averageAmount, item.currency)}
+                      </Text>
+                    </View>
+                    <Pressable onPress={() => openDraft(item)} style={[styles.chip, { borderColor: colors.accent }]}>
+                      <Ionicons name="repeat" size={14} color={colors.accent} />
+                      <Text style={{ color: colors.accent, fontSize: fontSize.xs, fontFamily: fonts.semibold }}>Automate</Text>
+                    </Pressable>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : null}
+        </>
+      )}
 
       <BottomSheet visible={!!draft} onClose={() => setDraft(null)} title="Log this automatically">
         {draft ? (
           <View style={{ gap: spacing.s4 }}>
             <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }}>
-              We’ll add “{draft.description}” for you on schedule. You can pause it any time.
+              We&apos;ll add &ldquo;{draft.description}&rdquo; for you on schedule. You can pause it any time.
             </Text>
 
             <Input
@@ -309,18 +319,14 @@ export default function RecurringScreen() {
             />
 
             <View style={{ gap: spacing.s2 }}>
-              <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, fontFamily: fonts.medium }}>
-                Repeats
-              </Text>
+              <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, fontFamily: fonts.medium }}>Repeats</Text>
               <SegmentedControl
                 segments={[
                   { value: 'monthly', label: 'Monthly' },
                   { value: 'weekly', label: 'Weekly' },
                 ]}
                 value={draft.frequency}
-                onChange={(frequency) =>
-                  setDraft({ ...draft, frequency: frequency as RecurringFrequency })
-                }
+                onChange={(frequency) => setDraft({ ...draft, frequency: frequency as RecurringFrequency })}
               />
             </View>
 
@@ -337,9 +343,7 @@ export default function RecurringScreen() {
               />
             ) : (
               <View style={{ gap: spacing.s2 }}>
-                <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, fontFamily: fonts.medium }}>
-                  Day of week
-                </Text>
+                <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, fontFamily: fonts.medium }}>Day of week</Text>
                 <View style={{ flexDirection: 'row', gap: spacing.s1, flexWrap: 'wrap' }}>
                   {WEEKDAYS.map((label, index) => {
                     const active = draft.dayOfWeek === index;
@@ -383,10 +387,38 @@ export default function RecurringScreen() {
 }
 
 const styles = StyleSheet.create({
+  pageHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.s2,
+    marginBottom: spacing.s1,
+  },
+  backBtn: { marginLeft: -spacing.s1, marginTop: 2 },
   sectionLabel: {
     fontSize: fontSize.xs,
-    fontFamily: fonts.semibold,
-    letterSpacing: 1,
+    fontFamily: fonts.medium,
+    marginLeft: spacing.s1,
+  },
+  summaryCard: {
+    borderWidth: 1,
+    borderRadius: radius.lg,
+    padding: spacing.s4,
+  },
+  listCard: {
+    borderWidth: 1,
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+  },
+  emptyCard: {
+    borderWidth: 1,
+    borderRadius: radius.lg,
+    padding: spacing.s6,
+    alignItems: 'center',
+  },
+  ruleBlock: {
+    paddingHorizontal: spacing.s3,
+    paddingVertical: spacing.s3,
+    gap: spacing.s3,
   },
   actionBar: {
     flexDirection: 'row',

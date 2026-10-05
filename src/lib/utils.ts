@@ -1,28 +1,21 @@
 // Ported from client/lib/utils.ts (RN flavor: colors as hex values, no tailwind classes)
 import { format, parseISO } from 'date-fns';
 
-const SYMBOLS: Record<string, string> = {
-  USD: '$',
-  EUR: '€',
-  GBP: '£',
-  BDT: '৳',
-  INR: '₹',
-  PKR: 'Rs ',
-  JPY: '¥',
-  CAD: 'C$',
-  AUD: 'A$',
-};
+import { normalizeIso4217Code } from './iso4217';
 
-const currencyCodeMap: Record<string, string> = {
+/** Legacy aliases from parsed expense text → ISO 4217 */
+const currencyAliasMap: Record<string, string> = {
   TK: 'BDT',
   Rs: 'INR',
-  PKR: 'PKR',
   '₹': 'INR',
   '৳': 'BDT',
 };
 
 export function currencyCodeForDisplay(currency: string): string {
-  return currencyCodeMap[currency] || currency;
+  const upper = currency.trim().toUpperCase();
+  const alias = currencyAliasMap[currency] ?? currencyAliasMap[upper];
+  if (alias) return alias;
+  return normalizeIso4217Code(upper) ?? upper;
 }
 
 /** Stacked amount column (code + negative value) for expense rows. */
@@ -34,15 +27,14 @@ export function formatExpenseAmountParts(amount: number, currency: string): { co
 }
 
 export function formatCurrency(amount: number, currency: string = 'USD'): string {
-  const mapped = currencyCodeMap[currency] || currency;
+  const mapped = currencyCodeForDisplay(currency);
   try {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: mapped,
     }).format(amount);
   } catch {
-    const symbol = SYMBOLS[mapped] || `${mapped} `;
-    return `${symbol}${amount.toFixed(2)}`;
+    return `${mapped} ${amount.toFixed(2)}`;
   }
 }
 

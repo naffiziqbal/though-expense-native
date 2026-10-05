@@ -15,6 +15,7 @@ import { ADVISOR_PROMPT_GROUPS, type AdvisorPrompt } from '../../lib/advisorProm
 import { api, getErrorMessage } from '../../lib/api';
 import type { ChatTurn, SavingsPlan } from '../../lib/types';
 import { formatCurrency } from '../../lib/utils';
+import { useScreenBack } from '../../lib/hiddenTabNavigation';
 import { useAuthStore } from '../../store/authStore';
 import { toast } from '../../store/toastStore';
 
@@ -63,6 +64,7 @@ export default function AssistantScreen() {
   const insets = useSafeAreaInsets();
   const tabTopPadding = useTabScreenTopPadding(spacing.s2);
   const router = useRouter();
+  const goBack = useScreenBack('/(tabs)');
   const { user } = useAuthStore();
   const isPremium = user?.isPremium ?? false;
 
@@ -293,7 +295,7 @@ export default function AssistantScreen() {
             },
           ]}
         >
-          <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backBtn}>
+          <Pressable onPress={goBack} hitSlop={8} style={styles.backBtn}>
             <Ionicons name="chevron-back" size={22} color={colors.textPrimary} />
           </Pressable>
           <View style={[styles.heroIcon, { backgroundColor: colors.accentSoft }]}>

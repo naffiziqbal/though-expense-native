@@ -22,11 +22,13 @@ import { getCategoryEmoji } from '../../lib/categoryIcons';
 import type { BudgetSummary, CategoryBudgetProgress, Expense } from '../../lib/types';
 import { formatCurrency } from '../../lib/utils';
 import { toast } from '../../store/toastStore';
+import { useScreenBack } from '../../lib/hiddenTabNavigation';
 import { useAuthStore } from '../../store/authStore';
 
 export default function BudgetScreen() {
   const { colors } = useTheme();
   const router = useRouter();
+  const goBack = useScreenBack('/(tabs)');
   const { user } = useAuthStore();
   const currency = user?.currency || 'USD';
 
@@ -209,7 +211,7 @@ export default function BudgetScreen() {
       contentStyle={{ gap: spacing.s3 }}
     >
       <View style={styles.pageHeader}>
-        <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backBtn}>
+        <Pressable onPress={goBack} hitSlop={8} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
         </Pressable>
         <View style={{ flex: 1, minWidth: 0 }}>
