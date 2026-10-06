@@ -17,11 +17,23 @@ interface InputProps extends TextInputProps {
   hint?: string;
   containerStyle?: StyleProp<ViewStyle>;
   rightElement?: React.ReactNode;
+  variant?: 'filled' | 'underline';
 }
 
-export function Input({ label, error, hint, containerStyle, rightElement, style, ...rest }: InputProps) {
+export function Input({
+  label,
+  error,
+  hint,
+  containerStyle,
+  rightElement,
+  variant = 'filled',
+  style,
+  ...rest
+}: InputProps) {
   const { colors } = useTheme();
   const [focused, setFocused] = useState(false);
+  const underline = variant === 'underline';
+  const borderColor = error ? colors.error : focused ? colors.accent : colors.border;
 
   return (
     <View style={[styles.container, containerStyle]}>
@@ -29,10 +41,16 @@ export function Input({ label, error, hint, containerStyle, rightElement, style,
       <View
         style={[
           styles.inputWrap,
-          {
-            backgroundColor: colors.inputBg,
-            borderColor: error ? colors.error : focused ? colors.accent : colors.border,
-          },
+          underline && styles.inputWrapUnderline,
+          underline
+            ? {
+                backgroundColor: 'transparent',
+                borderBottomColor: borderColor,
+              }
+            : {
+                backgroundColor: colors.inputBg,
+                borderColor,
+              },
         ]}
       >
         <TextInput
@@ -46,7 +64,7 @@ export function Input({ label, error, hint, containerStyle, rightElement, style,
             setFocused(false);
             rest.onBlur?.(e);
           }}
-          style={[styles.input, { color: colors.textPrimary }, style]}
+          style={[styles.input, underline && styles.inputUnderline, { color: colors.textPrimary }, style]}
         />
         {rightElement}
       </View>
@@ -74,10 +92,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.s3,
   },
+  inputWrapUnderline: {
+    borderWidth: 0,
+    borderBottomWidth: StyleSheet.hairlineWidth * 2,
+    borderRadius: 0,
+    paddingHorizontal: 0,
+  },
   input: {
     flex: 1,
     paddingVertical: spacing.s3,
     fontSize: fontSize.md,
+  },
+  inputUnderline: {
+    paddingVertical: spacing.s2,
   },
   hint: {
     fontSize: fontSize.xs,

@@ -2,7 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Link, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Button } from '../../components/ui/Button';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AuthPillButton } from '../../components/auth/AuthPillButton';
 import { Input } from '../../components/ui/Input';
 import { Screen } from '../../components/ui/Screen';
 import { fonts, fontSize, radius, spacing } from '../../constants/theme';
@@ -11,8 +12,11 @@ import { api, getErrorMessage } from '../../lib/api';
 import { toast } from '../../store/toastStore';
 import { useAuthStore } from '../../store/authStore';
 
+const compactInput = { paddingVertical: spacing.s2, fontSize: fontSize.sm };
+
 export default function LoginScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const setUser = useAuthStore((s) => s.setUser);
 
@@ -21,6 +25,8 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
+
+  const canSubmit = email.length > 0 && password.length > 0;
 
   const validate = () => {
     const next: Record<string, string> = {};
@@ -49,52 +55,75 @@ export default function LoginScreen() {
   };
 
   return (
-    <Screen safeTop contentStyle={styles.content}>
-      {/* Brand anchor */}
-      <View style={styles.brand}>
-        <View style={[styles.logo, { backgroundColor: colors.accent }]}>
-          <Ionicons name="trending-up" size={24} color={colors.onAccent} />
+    <Screen scroll={false} safeTop contentStyle={styles.screen}>
+      <View style={styles.main}>
+        <View style={styles.brandRow}>
+          <View style={[styles.logo, { backgroundColor: colors.accent }]}>
+            <Ionicons name="trending-up" size={20} color={colors.onAccent} />
+          </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1}>
+              Welcome back
+            </Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]} numberOfLines={1}>
+              Thought Expense · sign in to continue
+            </Text>
+          </View>
         </View>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>Welcome Back</Text>
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Securely login to your wallet</Text>
-      </View>
 
-      <View style={{ gap: spacing.s3 }}>
-        <Input
-          placeholder="you@example.com"
-          value={email}
-          onChangeText={setEmail}
-          error={errors.email}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoComplete="email"
-        />
-        <Input
-          placeholder="••••••••"
-          value={password}
-          onChangeText={setPassword}
-          error={errors.password}
-          secureTextEntry={!showPassword}
-          autoComplete="current-password"
-          rightElement={
-            <Pressable onPress={() => setShowPassword(!showPassword)} hitSlop={8}>
-              <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={20} color={colors.textMuted} />
+        <View style={styles.form}>
+          <Input
+            variant="underline"
+            placeholder="Email"
+            value={email}
+            onChangeText={setEmail}
+            error={errors.email}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+            style={compactInput}
+          />
+          <Input
+            variant="underline"
+            placeholder="Password"
+            value={password}
+            onChangeText={setPassword}
+            error={errors.password}
+            secureTextEntry={!showPassword}
+            autoComplete="current-password"
+            style={compactInput}
+            rightElement={
+              <Pressable onPress={() => setShowPassword(!showPassword)} hitSlop={8}>
+                <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={18} color={colors.textMuted} />
+              </Pressable>
+            }
+          />
+
+          <Link href="/(auth)/forgot-password" asChild>
+            <Pressable style={styles.forgotLink} hitSlop={8}>
+              <Text style={{ color: colors.accent, fontSize: fontSize.xs, fontFamily: fonts.medium }}>
+                Forgot password?
+              </Text>
             </Pressable>
-          }
-        />
-        <Link href="/(auth)/forgot-password" asChild>
-          <Pressable style={{ alignSelf: 'flex-end' }}>
-            <Text style={[styles.link, { color: colors.accent }]}>Forgot password?</Text>
-          </Pressable>
-        </Link>
-        <Button title="Sign In" onPress={handleSubmit} loading={isLoading} size="lg" />
+          </Link>
+
+          <View style={styles.submitRow}>
+            <AuthPillButton
+              label="Sign in"
+              onPress={handleSubmit}
+              loading={isLoading}
+              loadingLabel="Signing in…"
+              disabled={!canSubmit}
+            />
+          </View>
+        </View>
       </View>
 
-      <View style={styles.footerRow}>
-        <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }}>Don’t have an account? </Text>
+      <View style={[styles.footerRow, { paddingBottom: Math.max(insets.bottom, spacing.s2) }]}>
+        <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }}>No account? </Text>
         <Link href="/(auth)/signup" asChild>
           <Pressable>
-            <Text style={[styles.link, { color: colors.accent }]}>Sign up for free</Text>
+            <Text style={{ color: colors.accent, fontSize: fontSize.sm, fontFamily: fonts.semibold }}>Sign up</Text>
           </Pressable>
         </Link>
       </View>
@@ -103,33 +132,48 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    gap: spacing.s5,
+  screen: {
+    flex: 1,
+    paddingHorizontal: spacing.s4,
+    paddingBottom: spacing.s2,
   },
-  brand: {
+  main: {
+    flex: 1,
+    justifyContent: 'center',
+    minHeight: 0,
+    gap: spacing.s3,
+  },
+  brandRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.s1,
+    gap: spacing.s3,
   },
   logo: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.lg,
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.s2,
   },
   title: {
-    fontSize: fontSize.xl,
+    fontSize: fontSize.lg,
     fontFamily: fonts.bold,
   },
   subtitle: {
-    fontSize: fontSize.sm,
+    fontSize: fontSize.xs,
+    marginTop: 2,
   },
-  link: {
-    fontSize: fontSize.sm,
-    fontFamily: fonts.semibold,
+  form: {
+    gap: spacing.s2,
+  },
+  forgotLink: {
+    alignSelf: 'flex-end',
+    marginTop: -spacing.s1,
+  },
+  submitRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: spacing.s2,
   },
   footerRow: {
     flexDirection: 'row',

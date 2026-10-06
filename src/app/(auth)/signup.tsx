@@ -3,14 +3,15 @@ import * as Linking from 'expo-linking';
 import { Link, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Button } from '../../components/ui/Button';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CurrencyPickerField } from '../../components/currency/CurrencyPickerField';
+import { AuthPillButton } from '../../components/auth/AuthPillButton';
 import { Input } from '../../components/ui/Input';
 import { Screen } from '../../components/ui/Screen';
 import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { api, getErrorMessage } from '../../lib/api';
-import { getDefaultCurrency, SIGNUP_CURRENCY_HINT } from '../../lib/currencies';
-import { CurrencyPickerField } from '../../components/currency/CurrencyPickerField';
+import { getDefaultCurrency } from '../../lib/currencies';
 import { toast } from '../../store/toastStore';
 import { useAuthStore } from '../../store/authStore';
 import { useOnboardingStore } from '../../store/onboardingStore';
@@ -24,9 +25,11 @@ function getPasswordStrength(pwd: string): 0 | 1 | 2 | 3 | 4 {
 }
 
 const WEBSITE = 'https://thought-expense.nafiziqbal.com';
+const compactInput = { paddingVertical: spacing.s2, fontSize: fontSize.sm };
 
 export default function SignupScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const setUser = useAuthStore((s) => s.setUser);
   const markPending = useOnboardingStore((s) => s.markPending);
@@ -41,8 +44,6 @@ export default function SignupScreen() {
 
   const strength = getPasswordStrength(password);
   const isPasswordValid = password.length >= 6;
-
-  const strengthColors = [colors.border, colors.error, colors.warning, colors.warning, colors.success];
 
   const validate = () => {
     const next: Record<string, string> = {};
@@ -66,8 +67,6 @@ export default function SignupScreen() {
       });
       if (response.success) {
         setUser(response.data.user);
-        // Flags the account for the guided tour, which starts itself once the
-        // tab shell mounts (see app/(tabs)/_layout.tsx).
         markPending(response.data.user.id);
         toast.success('Account created successfully!');
         router.replace('/(tabs)');
@@ -80,77 +79,113 @@ export default function SignupScreen() {
   };
 
   return (
-    <Screen safeTop contentStyle={styles.content}>
-      <View style={styles.brand}>
-        <View style={[styles.logo, { backgroundColor: colors.accent }]}>
-          <Ionicons name="trending-up" size={24} color={colors.onAccent} />
-        </View>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>Create Account</Text>
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Start tracking expenses naturally</Text>
-      </View>
-
-      <View style={{ gap: spacing.s3 }}>
-        <Input placeholder="Full Name" value={name} onChangeText={setName} autoComplete="name" autoCapitalize="words" />
-        <Input
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          error={errors.email}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoComplete="email"
-        />
-        <View style={{ gap: spacing.s1 }}>
-          <Input
-            placeholder="Password (min 6 characters)"
-            value={password}
-            onChangeText={setPassword}
-            error={errors.password}
-            secureTextEntry={!showPassword}
-            autoComplete="new-password"
-            rightElement={
-              <Pressable onPress={() => setShowPassword(!showPassword)} hitSlop={8}>
-                <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={20} color={colors.textMuted} />
-              </Pressable>
-            }
-          />
-          {/* Strength meter - 4 pills */}
-          <View style={styles.strengthRow}>
-            {[0, 1, 2, 3].map((i) => {
-              let color = colors.border;
-              if (strength === 1 && i === 0) color = colors.error;
-              else if (strength === 2 && i < 2) color = colors.warning;
-              else if (strength === 3 && i < 3) color = colors.warning;
-              else if (strength === 4) color = colors.success;
-              return <View key={i} style={[styles.strengthPill, { backgroundColor: color }]} />;
-            })}
+    <Screen scroll={false} safeTop contentStyle={styles.screen}>
+      <View style={styles.main}>
+        <View style={styles.brandRow}>
+          <View style={[styles.logo, { backgroundColor: colors.accent }]}>
+            <Ionicons name="trending-up" size={20} color={colors.onAccent} />
+          </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1}>
+              Create account
+            </Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]} numberOfLines={1}>
+              Thought Expense · natural-language tracking
+            </Text>
           </View>
         </View>
 
-        <CurrencyPickerField
-          value={currency}
-          onChange={setCurrency}
-          title="Select currency"
-          hint={SIGNUP_CURRENCY_HINT}
-        />
+        <View style={styles.form}>
+          <Input
+            variant="underline"
+            placeholder="Name (optional)"
+            value={name}
+            onChangeText={setName}
+            autoComplete="name"
+            autoCapitalize="words"
+            style={compactInput}
+          />
+          <Input
+            variant="underline"
+            placeholder="Email"
+            value={email}
+            onChangeText={setEmail}
+            error={errors.email}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+            style={compactInput}
+          />
+          <View style={{ gap: 4 }}>
+            <Input
+              variant="underline"
+              placeholder="Password (min 6 characters)"
+              value={password}
+              onChangeText={setPassword}
+              error={errors.password}
+              secureTextEntry={!showPassword}
+              autoComplete="new-password"
+              style={compactInput}
+              rightElement={
+                <Pressable onPress={() => setShowPassword(!showPassword)} hitSlop={8}>
+                  <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={18} color={colors.textMuted} />
+                </Pressable>
+              }
+            />
+            {password.length > 0 ? (
+              <View style={styles.strengthRow}>
+                {[0, 1, 2, 3].map((i) => {
+                  let color = colors.border;
+                  if (strength === 1 && i === 0) color = colors.error;
+                  else if (strength === 2 && i < 2) color = colors.warning;
+                  else if (strength === 3 && i < 3) color = colors.warning;
+                  else if (strength === 4) color = colors.success;
+                  return <View key={i} style={[styles.strengthPill, { backgroundColor: color }]} />;
+                })}
+              </View>
+            ) : null}
+          </View>
 
-        <Button title="Get Started" onPress={handleSubmit} loading={isLoading} disabled={!isPasswordValid} size="lg" />
+          <CurrencyPickerField
+            compact
+            variant="underline"
+            value={currency}
+            onChange={setCurrency}
+            title="Display currency"
+          />
 
-        <Text style={[styles.legal, { color: colors.textSecondary }]}>
-          By signing up, you agree to our{' '}
-          <Text style={{ color: colors.textPrimary, textDecorationLine: 'underline' }} onPress={() => Linking.openURL(`${WEBSITE}/terms`)}>
-            Terms of Service
-          </Text>{' '}
-          and{' '}
-          <Text style={{ color: colors.textPrimary, textDecorationLine: 'underline' }} onPress={() => Linking.openURL(`${WEBSITE}/privacy`)}>
-            Privacy Policy
+          <View style={styles.submitRow}>
+            <AuthPillButton
+              label="Get started"
+              onPress={handleSubmit}
+              loading={isLoading}
+              loadingLabel="Creating…"
+              disabled={!isPasswordValid}
+            />
+          </View>
+
+          <Text style={[styles.legal, { color: colors.textMuted }]}>
+            By signing up you agree to our{' '}
+            <Text
+              style={[styles.legalLink, { color: colors.textSecondary }]}
+              onPress={() => Linking.openURL(`${WEBSITE}/terms`)}
+            >
+              Terms
+            </Text>{' '}
+            &{' '}
+            <Text
+              style={[styles.legalLink, { color: colors.textSecondary }]}
+              onPress={() => Linking.openURL(`${WEBSITE}/privacy`)}
+            >
+              Privacy
+            </Text>
+            .
           </Text>
-          .
-        </Text>
+        </View>
       </View>
 
-      <View style={styles.footerRow}>
-        <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }}>Already have an account? </Text>
+      <View style={[styles.footerRow, { paddingBottom: Math.max(insets.bottom, spacing.s2) }]}>
+        <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }}>Have an account? </Text>
         <Link href="/(auth)/login" asChild>
           <Pressable>
             <Text style={{ color: colors.accent, fontSize: fontSize.sm, fontFamily: fonts.semibold }}>Sign in</Text>
@@ -162,43 +197,63 @@ export default function SignupScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    gap: spacing.s5,
+  screen: {
+    flex: 1,
+    paddingHorizontal: spacing.s4,
+    paddingBottom: spacing.s2,
   },
-  brand: {
+  main: {
+    flex: 1,
+    justifyContent: 'center',
+    minHeight: 0,
+    gap: spacing.s3,
+  },
+  brandRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.s1,
+    gap: spacing.s3,
   },
   logo: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.lg,
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.s2,
   },
   title: {
-    fontSize: fontSize.xl,
+    fontSize: fontSize.lg,
     fontFamily: fonts.bold,
   },
   subtitle: {
-    fontSize: fontSize.sm,
+    fontSize: fontSize.xs,
+    marginTop: 2,
+  },
+  form: {
+    gap: spacing.s2,
+  },
+  submitRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: spacing.s2,
   },
   strengthRow: {
     flexDirection: 'row',
     gap: 4,
+    paddingHorizontal: spacing.s1,
   },
   strengthPill: {
     flex: 1,
-    height: 5,
+    height: 3,
     borderRadius: radius.full,
   },
   legal: {
-    fontSize: 11,
+    fontSize: 10,
     textAlign: 'center',
-    lineHeight: 15,
+    lineHeight: 14,
+    marginTop: spacing.s1,
+  },
+  legalLink: {
+    textDecorationLine: 'underline',
   },
   footerRow: {
     flexDirection: 'row',
