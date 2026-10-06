@@ -1,6 +1,7 @@
 import Constants from 'expo-constants';
 import { Platform, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { spacing } from '../constants/theme';
 
 /** Reliable in Expo Go and dev builds (not only `StatusBar.currentHeight`). */
 export function getStatusBarHeight(): number {
@@ -11,15 +12,19 @@ export function getStatusBarHeight(): number {
   return fromExpo;
 }
 
+/** Fallback when edge-to-edge reports 0 before first layout. */
+const ANDROID_MIN_TOP_INSET = 28;
+
 /**
- * Top inset for tab content. On Android, never use inflated `insets.top` — only the
- * status bar height (translucent bar in app.json).
+ * Top inset for content below the status bar. Android edge-to-edge may report
+ * `insets.top` or only `StatusBar.currentHeight` — use whichever is larger.
  */
 export function resolveTabTopInset(insetsTop: number): number {
   if (Platform.OS === 'android') {
     const statusH = getStatusBarHeight();
-    if (statusH > 0) return statusH;
-    return Math.min(insetsTop, 36);
+    const resolved = Math.max(statusH, insetsTop);
+    if (resolved > 0) return resolved;
+    return ANDROID_MIN_TOP_INSET;
   }
   return insetsTop;
 }
@@ -30,18 +35,10 @@ export function useSafeTop() {
   return resolveTabTopInset(insets.top);
 }
 
-/**
- * Android edge-to-edge: use a tighter top pad (half inset / status bar height).
- * iOS: use the full safe-area inset so controls clear notch / Dynamic Island.
- */
-export const TAB_TOP_INSET_RATIO = 0.5;
-
-/** Top padding for headerless tab screens. */
+/** Top padding for headerless tab screens — full inset plus a little air on Android. */
 export function useTabScreenTopPadding(extra = 0) {
   const insets = useSafeAreaInsets();
   const full = resolveTabTopInset(insets.top);
-  if (Platform.OS === 'ios') {
-    return full + extra;
-  }
-  return Math.round(full * TAB_TOP_INSET_RATIO) + extra;
+  const breath = Platform.OS === 'android' ? spacing.s2 : 0;
+  return full + breath + extra;
 }

@@ -45,8 +45,8 @@ export function Screen({
   const insets = useSafeAreaInsets();
   const tabTopPadding = useTabScreenTopPadding();
   const { height: windowHeight } = useWindowDimensions();
-  /** Scrolls with content — no fixed outer pad (avoids a blank band when pulling/scrolling). */
-  const paddingTop = safeTop ? tabTopPadding : spacing.s4;
+  /** Scrolls with content — always clear the status bar; tab screens skip extra s4. */
+  const paddingTop = safeTop ? tabTopPadding : tabTopPadding + spacing.s4;
 
   const lift = useKeyboardLift(insets.bottom);
   const scrollRef = useRef<ScrollView>(null);
