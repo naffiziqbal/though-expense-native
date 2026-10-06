@@ -9,7 +9,7 @@ import { Screen } from '../../components/ui/Screen';
 import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { api, getErrorMessage } from '../../lib/api';
-import { getDefaultCurrency } from '../../lib/currencies';
+import { getDefaultCurrency, SIGNUP_CURRENCY_HINT } from '../../lib/currencies';
 import { CurrencyPickerField } from '../../components/currency/CurrencyPickerField';
 import { toast } from '../../store/toastStore';
 import { useAuthStore } from '../../store/authStore';
@@ -127,7 +127,12 @@ export default function SignupScreen() {
           </View>
         </View>
 
-        <CurrencyPickerField value={currency} onChange={setCurrency} title="Select currency" />
+        <CurrencyPickerField
+          value={currency}
+          onChange={setCurrency}
+          title="Select currency"
+          hint={SIGNUP_CURRENCY_HINT}
+        />
 
         <Button title="Get Started" onPress={handleSubmit} loading={isLoading} disabled={!isPasswordValid} size="lg" />
 

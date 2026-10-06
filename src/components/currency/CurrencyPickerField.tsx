@@ -1,30 +1,30 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import React, { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
-import { getIso4217Currency, listIso4217CurrenciesGrouped, searchIso4217Currencies } from '../../lib/currencies';
+import { getIso4217Currency } from '../../lib/currencies';
 import { BottomSheet } from '../ui/BottomSheet';
-import { CurrencyPickerList } from './CurrencyPickerList';
+import { CurrencySearchPanel } from './CurrencySearchPanel';
 
 interface CurrencyPickerFieldProps {
   label?: string;
   value: string;
   onChange: (code: string) => void;
   title?: string;
+  hint?: string;
 }
 
-export function CurrencyPickerField({ label, value, onChange, title = 'Select currency' }: CurrencyPickerFieldProps) {
+export function CurrencyPickerField({
+  label,
+  value,
+  onChange,
+  title = 'Select currency',
+  hint,
+}: CurrencyPickerFieldProps) {
   const { colors } = useTheme();
   const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState('');
   const selected = getIso4217Currency(value);
-
-  const sheetItems = useMemo(() => {
-    if (query.trim()) return searchIso4217Currencies(query);
-    const { popular, all } = listIso4217CurrenciesGrouped();
-    return [...popular, ...all];
-  }, [query]);
 
   return (
     <View style={{ gap: spacing.s1 }}>
@@ -38,34 +38,22 @@ export function CurrencyPickerField({ label, value, onChange, title = 'Select cu
         </Text>
         <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
       </Pressable>
+      {hint ? (
+        <Text style={{ color: colors.textMuted, fontSize: fontSize.xs, lineHeight: 18, marginTop: spacing.s1 }}>
+          {hint}
+        </Text>
+      ) : null}
       <BottomSheet
         visible={open}
-        onClose={() => {
-          setOpen(false);
-          setQuery('');
-        }}
+        onClose={() => setOpen(false)}
         title={title}
       >
-        <TextInput
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Search by code or name…"
-          placeholderTextColor={colors.textMuted}
-          autoCapitalize="characters"
-          autoCorrect={false}
-          style={[
-            styles.search,
-            { borderColor: colors.border, backgroundColor: colors.inputBg, color: colors.textPrimary },
-          ]}
-        />
-        <ScrollView style={{ maxHeight: 360 }} keyboardShouldPersistTaps="handled">
-          <CurrencyPickerList
-            items={sheetItems}
+        <ScrollView style={{ maxHeight: 420 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <CurrencySearchPanel
             selectedCode={value}
             onSelect={(code) => {
               onChange(code);
               setOpen(false);
-              setQuery('');
             }}
           />
         </ScrollView>
@@ -87,13 +75,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-  },
-  search: {
-    borderWidth: 1,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.s3,
-    paddingVertical: spacing.s2,
-    fontSize: fontSize.sm,
-    marginBottom: spacing.s2,
   },
 });
