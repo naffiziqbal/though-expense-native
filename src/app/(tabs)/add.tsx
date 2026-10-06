@@ -16,6 +16,7 @@ import { DateField } from '../../components/ui/DateField';
 import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { api, getErrorMessage } from '../../lib/api';
+import { IMPORT_IMAGE_PICKER_OPTIONS } from '../../lib/imagePickerOptions';
 import { formatCurrency, getCategoryFromKeyword, parseExpenseInputLocally } from '../../lib/utils';
 import { toast } from '../../store/toastStore';
 import { useAuthStore } from '../../store/authStore';
@@ -115,9 +116,9 @@ export default function AddExpenseScreen() {
           toast.error('Camera permission is required to scan receipts');
           return;
         }
-        result = await ImagePicker.launchCameraAsync({ quality: 0.8 });
+        result = await ImagePicker.launchCameraAsync(IMPORT_IMAGE_PICKER_OPTIONS);
       } else {
-        result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
+        result = await ImagePicker.launchImageLibraryAsync(IMPORT_IMAGE_PICKER_OPTIONS);
       }
       if (result.canceled || !result.assets?.[0]) return;
       const asset = result.assets[0];

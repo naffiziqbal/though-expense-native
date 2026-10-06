@@ -60,8 +60,6 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
       transparent
       animationType="slide"
       onRequestClose={close}
-      statusBarTranslucent
-      navigationBarTranslucent
       presentationStyle="overFullScreen"
     >
       <View style={{ width: overlayWidth, height: overlayHeight }}>

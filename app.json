@@ -7,10 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "thoughtexpense",
     "userInterfaceStyle": "automatic",
-    "androidStatusBar": {
-      "translucent": true,
-      "backgroundColor": "#00000000"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.nafiziqbal.thoughtexpense",
@@ -56,10 +52,12 @@
           "android": {
             "enableMinifyInReleaseBuilds": true,
             "enableShrinkResourcesInReleaseBuilds": true,
+            "useDayNightTheme": true,
             "extraProguardRules": "-keep class com.revenuecat.purchases.** { *; }\n-dontwarn com.revenuecat.purchases.**\n-keep class io.sentry.** { *; }\n-dontwarn io.sentry.**\n-keepattributes SourceFile,LineNumberTable"
           }
         }
       ],
+      "./plugins/withAndroidReleaseOptimizations.js",
       "expo-router",
       "expo-secure-store",
       "expo-font",

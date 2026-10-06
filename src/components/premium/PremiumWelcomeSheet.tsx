@@ -31,7 +31,7 @@ export function PremiumWelcomeSheet() {
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={dismiss} statusBarTranslucent>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={dismiss}>
       <Pressable style={styles.backdrop} onPress={dismiss}>
         <Pressable
           style={[

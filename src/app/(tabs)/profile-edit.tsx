@@ -12,6 +12,7 @@ import { fonts, fontSize, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { api, getErrorMessage } from '../../lib/api';
 import type { User } from '../../lib/types';
+import { AVATAR_IMAGE_PICKER_OPTIONS } from '../../lib/imagePickerOptions';
 import { getImageUrl } from '../../lib/utils';
 import { toast } from '../../store/toastStore';
 import { useAuthStore } from '../../store/authStore';
@@ -32,12 +33,7 @@ export default function ProfileEditScreen() {
   const displayImageUrl = pendingImage?.uri ?? getImageUrl(user?.profilePicture || user?.profilePictureUrl);
 
   const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.7,
-    });
+    const result = await ImagePicker.launchImageLibraryAsync(AVATAR_IMAGE_PICKER_OPTIONS);
     if (!result.canceled && result.assets[0]) {
       setError(null);
       setPendingImage(result.assets[0]);
