@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { CurrencyChangeConsentSheet } from '../../components/currency/CurrencyChangeConsentSheet';
 import { CurrencySearchPanel } from '../../components/currency/CurrencySearchPanel';
-import { Button } from '../../components/ui/Button';
 import { Screen } from '../../components/ui/Screen';
 import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
@@ -20,25 +20,35 @@ export default function CurrenciesScreen() {
   const goBack = useScreenBack('/(tabs)/profile');
   const { user, setUser } = useAuthStore();
   const savedCode = user?.currency || 'USD';
-  const [selectedCurrency, setSelectedCurrency] = useState(savedCode);
+  const [pendingCode, setPendingCode] = useState<string | null>(null);
+  const [consentOpen, setConsentOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  useEffect(() => {
-    setSelectedCurrency(savedCode);
-  }, [savedCode]);
-
-  const hasChanges = selectedCurrency !== savedCode;
-  const selected = useMemo(() => findCurrency(selectedCurrency) ?? findCurrency('USD')!, [selectedCurrency]);
+  const selected = useMemo(() => findCurrency(savedCode) ?? findCurrency('USD')!, [savedCode]);
   const preview = formatCurrency(PREVIEW_AMOUNT, selected.code);
 
-  const handleSave = async () => {
-    if (!hasChanges || !user) return;
+  const handlePick = (code: string) => {
+    if (code === savedCode) return;
+    setPendingCode(code);
+    setConsentOpen(true);
+  };
+
+  const closeConsent = () => {
+    if (isSaving) return;
+    setConsentOpen(false);
+    setPendingCode(null);
+  };
+
+  const applyCurrency = async () => {
+    if (!pendingCode || !user || pendingCode === savedCode) return;
     setIsSaving(true);
     try {
-      const res = await api.updateProfile({ currency: selectedCurrency });
+      const res = await api.updateProfile({ currency: pendingCode });
       if (res.success && res.data?.user) {
         setUser({ ...user, ...res.data.user });
-        toast.success(`Currency updated — amounts now display in ${selectedCurrency}`);
+        toast.success(`Currency updated — amounts now display in ${pendingCode}`);
+        setConsentOpen(false);
+        setPendingCode(null);
         goBack();
       } else {
         toast.error('Failed to update currency. Please try again.');
@@ -51,7 +61,7 @@ export default function CurrenciesScreen() {
   };
 
   return (
-    <Screen safeTop contentStyle={{ gap: spacing.s3 }}>
+    <Screen safeTop contentStyle={{ gap: spacing.s3, paddingBottom: spacing.s6 }}>
       <View style={styles.pageHeader}>
         <Pressable onPress={goBack} hitSlop={8} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
@@ -62,15 +72,7 @@ export default function CurrenciesScreen() {
         </View>
       </View>
 
-      <View
-        style={[
-          styles.heroCard,
-          {
-            borderColor: hasChanges ? colors.accent : colors.border,
-            backgroundColor: hasChanges ? colors.accentSoft : colors.bgCard,
-          },
-        ]}
-      >
+      <View style={[styles.heroCard, { borderColor: colors.border, backgroundColor: colors.bgCard }]}>
         <Text style={{ color: colors.textMuted, fontSize: fontSize.xs, fontFamily: fonts.medium }}>Display currency</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.s3, marginTop: spacing.s2 }}>
           <View style={[styles.flagBubble, { backgroundColor: colors.bgPrimary }]}>
@@ -90,18 +92,20 @@ export default function CurrenciesScreen() {
           {preview}
         </Text>
         <Text style={{ color: colors.textMuted, fontSize: fontSize.xs, marginTop: spacing.s1 }}>Example formatting</Text>
-        {hasChanges ? (
-          <Text style={{ color: colors.accent, fontSize: fontSize.xs, fontFamily: fonts.medium, marginTop: spacing.s2 }}>
-            Save to apply this currency
-          </Text>
-        ) : null}
       </View>
 
-      <CurrencySearchPanel selectedCode={selectedCurrency} onSelect={setSelectedCurrency} />
+      <CurrencySearchPanel selectedCode={savedCode} onSelect={handlePick} />
 
       <Text style={{ color: colors.textMuted, fontSize: fontSize.xs, lineHeight: 18, marginHorizontal: spacing.s1 }}>{CURRENCY_DISPLAY_HINT}</Text>
 
-      <Button title={hasChanges ? 'Save currency' : 'Saved'} size="lg" onPress={handleSave} loading={isSaving} disabled={!hasChanges} />
+      <CurrencyChangeConsentSheet
+        visible={consentOpen}
+        pendingCode={pendingCode}
+        currentCode={savedCode}
+        onConfirm={applyCurrency}
+        onCancel={closeConsent}
+        loading={isSaving}
+      />
     </Screen>
   );
 }

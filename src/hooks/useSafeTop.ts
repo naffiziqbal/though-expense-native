@@ -30,12 +30,18 @@ export function useSafeTop() {
   return resolveTabTopInset(insets.top);
 }
 
-/** Tab screens sit tighter under the status bar (~half the system inset). */
+/**
+ * Android edge-to-edge: use a tighter top pad (half inset / status bar height).
+ * iOS: use the full safe-area inset so controls clear notch / Dynamic Island.
+ */
 export const TAB_TOP_INSET_RATIO = 0.5;
 
 /** Top padding for headerless tab screens. */
 export function useTabScreenTopPadding(extra = 0) {
   const insets = useSafeAreaInsets();
   const full = resolveTabTopInset(insets.top);
+  if (Platform.OS === 'ios') {
+    return full + extra;
+  }
   return Math.round(full * TAB_TOP_INSET_RATIO) + extra;
 }

@@ -187,8 +187,22 @@ export default function InsightsScreen() {
     []
   );
 
+  const openAdvisor = () => pushHiddenTab(router, '/assistant', '/(tabs)/insights');
+
   return (
     <Screen safeTop refreshing={refreshing} onRefresh={() => fetchAll(true)}>
+      <View style={styles.pageHeader}>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={{ color: colors.textPrimary, fontFamily: fonts.semibold, fontSize: fontSize.md }}>Insights</Text>
+          <Text style={{ color: colors.textMuted, fontSize: fontSize.xs, marginTop: 2 }}>Charts, trends, and AI tips</Text>
+        </View>
+        <Pressable onPress={openAdvisor} hitSlop={8} style={styles.advisorLink}>
+          <Ionicons name="sparkles" size={16} color={colors.accent} />
+          <Text style={{ color: colors.accent, fontFamily: fonts.semibold, fontSize: fontSize.sm }}>AI advisor</Text>
+          <Ionicons name="chevron-forward" size={16} color={colors.accent} />
+        </Pressable>
+      </View>
+
       {/* Period row */}
       <View style={styles.periodRow}>
         <View style={styles.periodSegmentWrap}>
@@ -473,6 +487,18 @@ export default function InsightsScreen() {
 }
 
 const styles = StyleSheet.create({
+  pageHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.s2,
+    marginBottom: spacing.s1,
+  },
+  advisorLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flexShrink: 0,
+  },
   periodRow: {
     flexDirection: 'row',
     alignItems: 'center',
