@@ -58,10 +58,14 @@ JS/assets only — native changes still need `eas build`.
 2. Publish an update:
 
 ```bash
-pnpm update:production -- --message "Describe the change"
+# Custom message — run eas directly (do not put `--` before --message)
+pnpx eas-cli update --channel production --environment production --message "Describe the change"
+
+# Or use git branch + latest commit message
+pnpm update:production -- --auto
 ```
 
-Preview/internal: `pnpm update:preview -- --message "…"` (requires a preview build on channel `preview`).
+Preview/internal: same pattern with `--channel preview --environment preview` (requires a preview build on channel `preview`).
 
 Runtime version follows `app.json` `version` (`runtimeVersion.policy: appVersion`). Bump `version` when you ship a new store binary so OTAs stay compatible.
 
