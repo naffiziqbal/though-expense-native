@@ -48,7 +48,22 @@ eas login                          # one-time (expo.dev account)
 eas build -p android --profile preview     # cloud build → downloadable .apk
 ```
 
-The `preview` and `production` profiles bake in `EXPO_PUBLIC_API_URL=https://api.thought-expense.nafiziqbal.com` — change that in `eas.json` to match your deployed API before building.
+Production API URL and other `EXPO_PUBLIC_*` vars come from the **production** environment on [expo.dev](https://expo.dev) (not local `.env`).
+
+### EAS Update (OTA)
+
+JS/assets only — native changes still need `eas build`.
+
+1. Ship at least one **production** build with `expo-updates` (channel `production` in `eas.json`).
+2. Publish an update:
+
+```bash
+pnpm update:production -- --message "Describe the change"
+```
+
+Preview/internal: `pnpm update:preview -- --message "…"` (requires a preview build on channel `preview`).
+
+Runtime version follows `app.json` `version` (`runtimeVersion.policy: appVersion`). Bump `version` when you ship a new store binary so OTAs stay compatible.
 
 ### Local APK build (no cloud)
 

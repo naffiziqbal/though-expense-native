@@ -3,6 +3,15 @@
     "name": "ThoughtExpense",
     "slug": "thought-expense",
     "version": "1.0.1",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/c42daafb-1a7c-4e02-8c58-131a4ffa117a",
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "thoughtexpense",

@@ -37,6 +37,7 @@
     "expo-status-bar": "~57.0.1",
     "expo-symbols": "~57.0.2",
     "expo-system-ui": "~57.0.2",
+    "expo-updates": "~57.0.24",
     "expo-web-browser": "~57.0.2",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -71,7 +72,9 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "eas": "pnpx eas-cli"
+    "eas": "pnpx eas-cli",
+    "update:production": "pnpx eas-cli update --channel production --environment production",
+    "update:preview": "pnpx eas-cli update --channel preview --environment preview"
   },
   "private": true
 }
