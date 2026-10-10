@@ -1,6 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-import { format, parseISO } from 'date-fns';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -135,19 +134,20 @@ export default function HomeScreen() {
     endDate
   );
 
-  const displayBudget = budget
-    ? {
-        ...budget,
-        total_spent:
-          budget.total_spent +
-          pending.filter((p) => p.date.slice(0, 10) >= startDate && p.date.slice(0, 10) <= endDate).reduce((s, p) => s + p.amount, 0),
-      }
-    : budget;
-  if (displayBudget) {
-    displayBudget.remaining = displayBudget.total_limit - displayBudget.total_spent;
-    displayBudget.percentage =
-      displayBudget.total_limit > 0 ? Math.round((displayBudget.total_spent / displayBudget.total_limit) * 100) : 0;
-  }
+  // Budget with not-yet-synced (pending) expenses folded in.
+  const displayBudget = useMemo(() => {
+    if (!budget) return budget;
+    const pendingSpent = pending
+      .filter((p) => p.date.slice(0, 10) >= startDate && p.date.slice(0, 10) <= endDate)
+      .reduce((s, p) => s + p.amount, 0);
+    const total_spent = budget.total_spent + pendingSpent;
+    return {
+      ...budget,
+      total_spent,
+      remaining: budget.total_limit - total_spent,
+      percentage: budget.total_limit > 0 ? Math.round((total_spent / budget.total_limit) * 100) : 0,
+    };
+  }, [budget, pending, startDate, endDate]);
 
   const currency = summary?.currency || user?.currency || 'USD';
   const budgetPct = displayBudget?.percentage ?? 0;
@@ -196,14 +196,6 @@ export default function HomeScreen() {
     const mergedIds = Array.from(new Set([...seenIds, ...notifications.map((n) => n.id)])).slice(-100);
     setSeenIds(mergedIds);
     AsyncStorage.setItem('seen-notifications', JSON.stringify(mergedIds)).catch(() => {});
-  };
-
-  const formatExpenseTime = (dateString: string) => {
-    try {
-      return format(parseISO(dateString), 'h:mm a');
-    } catch {
-      return '';
-    }
   };
 
   return (
@@ -411,7 +403,6 @@ export default function HomeScreen() {
                   </Text>
                   <Text style={[styles.todayMeta, { color: colors.textMuted }]} numberOfLines={1}>
                     {expense.category}
-                    {formatExpenseTime(expense.date) ? ` · ${formatExpenseTime(expense.date)}` : ''}
                   </Text>
                 </View>
                 <Text style={[styles.todayAmount, { color: colors.textPrimary }]}>
