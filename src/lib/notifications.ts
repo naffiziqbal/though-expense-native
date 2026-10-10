@@ -70,6 +70,20 @@ export async function getPermissionStatus(): Promise<PermissionOutcome> {
   return status === 'granted' ? 'granted' : 'denied';
 }
 
+export interface PermissionDetails {
+  status: 'granted' | 'denied' | 'undetermined' | 'unavailable';
+  /** False once the OS stops showing its prompt (e.g. denied twice on Android 13+) — send users to settings instead. */
+  canAskAgain: boolean;
+}
+
+export async function getPermissionDetails(): Promise<PermissionDetails> {
+  const Notifications = getNotifications();
+  if (!Notifications || !Device.isDevice) return { status: 'unavailable', canAskAgain: false };
+  const res = await Notifications.getPermissionsAsync();
+  const status = res.status === 'granted' ? 'granted' : res.status === 'denied' ? 'denied' : 'undetermined';
+  return { status, canAskAgain: res.canAskAgain };
+}
+
 /**
  * Ask for permission only when `interactive` — iOS shows the system prompt
  * once per install, so we save it for an explicit opt-in.

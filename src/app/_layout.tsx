@@ -12,6 +12,7 @@ import React, { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { PremiumWelcomeHost } from '../components/premium/PremiumWelcomeHost';
+import { NudgeHost } from '../components/nudges/NudgeHost';
 import { TourOverlay } from '../components/tour/TourOverlay';
 import { OfflineBanner } from '../components/ui/OfflineBanner';
 import { ToastHost } from '../components/ui/ToastHost';
@@ -87,6 +88,7 @@ function RootLayout() {
         {/* Above the Stack so the tour can dim the tab bar it points at. */}
         <TourOverlay />
         <PremiumWelcomeHost />
+        <NudgeHost />
         <ToastHost />
       </SafeAreaProvider>
     </GestureHandlerRootView>
