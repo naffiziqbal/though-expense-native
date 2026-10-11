@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { BottomSheet } from '../../components/ui/BottomSheet';
 import { Button } from '../../components/ui/Button';
@@ -14,7 +14,9 @@ import {
   buildPrimaryInsight,
   buildWeeklySpendingBuckets,
   formatCategoryDelta,
+  isBriefingCurrent,
   usualSpendMarkerPct,
+  weekKey,
   type CategoryDelta,
 } from '../../lib/insightsDashboard';
 import { api, getErrorMessage } from '../../lib/api';
@@ -78,6 +80,9 @@ export default function InsightsScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [briefingUpdating, setBriefingUpdating] = useState(false);
+  // Week we already auto-refreshed for, so a user with nothing new to brief isn't retried on every focus.
+  const autoRefreshedWeek = useRef<string | null>(null);
 
   const fetchAll = useCallback(
     async (isRefresh = false) => {
@@ -99,7 +104,21 @@ export default function InsightsScreen() {
         setPrevSummary(prevRes?.success ? prevRes.data : null);
         if (recurringRes?.success) setRecurring(recurringRes.data.recurring);
         if (intelligenceRes?.success) setIntelligence(intelligenceRes.data);
-        if (briefingRes?.success) setBriefing(briefingRes.data.briefing);
+        if (briefingRes?.success) {
+          const latest = briefingRes.data.briefing;
+          setBriefing(latest);
+          if (latest && !isBriefingCurrent(latest) && autoRefreshedWeek.current !== weekKey()) {
+            autoRefreshedWeek.current = weekKey();
+            setBriefingUpdating(true);
+            api
+              .generateBriefing()
+              .then((res) => {
+                if (res.success && res.data.briefing) setBriefing(res.data.briefing);
+              })
+              .catch(() => {})
+              .finally(() => setBriefingUpdating(false));
+          }
+        }
       } catch (error) {
         console.error('Failed to fetch insights:', error);
       } finally {
@@ -242,7 +261,7 @@ export default function InsightsScreen() {
             <Ionicons name="sparkles" size={16} color={colors.accent} />
             <Text style={{ color: colors.accent, fontSize: fontSize.xs, fontFamily: fonts.medium }}>AI insight</Text>
             <Text style={{ color: colors.textMuted, fontSize: fontSize.xs, marginLeft: 'auto' }}>
-              {primaryInsight.updatedLabel}
+              {briefingUpdating ? 'Updating…' : primaryInsight.updatedLabel}
             </Text>
           </View>
           <Text style={{ color: colors.textPrimary, fontSize: fontSize.md, fontFamily: fonts.medium, marginTop: spacing.s2 }}>
