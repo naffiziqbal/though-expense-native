@@ -1,5 +1,5 @@
 // Ported from client/lib/api.ts for React Native (token in SecureStore, in-memory cache)
-import axios, { AxiosError, AxiosInstance } from 'axios';
+import axios, { AxiosError, AxiosInstance, isAxiosError } from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import type {
   AdvisorAnswer,
@@ -37,6 +37,15 @@ const BASE_URL_KEY = 'thoughtexpense_base_url';
 
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:7100';
 
+export const PASSWORD_RESET_REQUIRED = 'PASSWORD_RESET_REQUIRED';
+
+/** The server refuses this account until the password is reset by emailed code. */
+export function isPasswordResetRequired(error: unknown): boolean {
+  if (!isAxiosError(error)) return false;
+  const data = error.response?.data as { code?: string } | undefined;
+  return data?.code === PASSWORD_RESET_REQUIRED;
+}
+
 /** Login failures, anonymous polls, and stale parse-job checks must not wipe the session. */
 function shouldClearSessionOn401(error: AxiosError): boolean {
   if (error.response?.status !== 401) return false;
@@ -50,8 +59,8 @@ function shouldClearSessionOn401(error: AxiosError): boolean {
 }
 
 /** Called when a 401 invalidates the session (wired up by the auth store). */
-let onUnauthorized: (() => void) | null = null;
-export function setUnauthorizedHandler(handler: () => void) {
+let onUnauthorized: ((opts: { passwordResetRequired: boolean }) => void) | null = null;
+export function setUnauthorizedHandler(handler: (opts: { passwordResetRequired: boolean }) => void) {
   onUnauthorized = handler;
 }
 
@@ -86,7 +95,7 @@ class ApiClient {
         }
         if (shouldClearSessionOn401(error)) {
           await this.clearToken();
-          onUnauthorized?.();
+          onUnauthorized?.({ passwordResetRequired: isPasswordResetRequired(error) });
         }
         return Promise.reject(error);
       }

@@ -18,6 +18,8 @@ interface AuthState {
   isLoading: boolean;
   error: string | null;
   _hasHydrated: boolean;
+  /** Server revoked the session until the password is reset; login routes to forgot-password. */
+  passwordResetRequired: boolean;
 
   setUser: (user: User) => void;
   clearUser: () => void;
@@ -26,6 +28,7 @@ interface AuthState {
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   setHasHydrated: (hydrated: boolean) => void;
+  setPasswordResetRequired: (required: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -36,6 +39,7 @@ export const useAuthStore = create<AuthState>()(
       isLoading: true,
       error: null,
       _hasHydrated: false,
+      passwordResetRequired: false,
 
       setUser: (user) => {
         const prev = get().user;
@@ -55,6 +59,8 @@ export const useAuthStore = create<AuthState>()(
       setError: (error) => set({ error }),
 
       setHasHydrated: (hydrated) => set({ _hasHydrated: hydrated }),
+
+      setPasswordResetRequired: (required) => set({ passwordResetRequired: required }),
 
       logout: async () => {
         // Stop pushes to this device before the token is discarded, so the next
@@ -127,7 +133,8 @@ export const useAuthStore = create<AuthState>()(
 );
 
 // When any request 401s, drop the session.
-setUnauthorizedHandler(() => {
+setUnauthorizedHandler(({ passwordResetRequired }) => {
+  if (passwordResetRequired) useAuthStore.getState().setPasswordResetRequired(true);
   useAuthStore.getState().clearUser();
   void clearExpenseCache();
 });

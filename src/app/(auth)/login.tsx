@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Link, useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AuthPillButton } from '../../components/auth/AuthPillButton';
@@ -8,7 +8,7 @@ import { Input } from '../../components/ui/Input';
 import { Screen } from '../../components/ui/Screen';
 import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
-import { api, getErrorMessage } from '../../lib/api';
+import { api, getErrorMessage, isPasswordResetRequired } from '../../lib/api';
 import { toast } from '../../store/toastStore';
 import { useAuthStore } from '../../store/authStore';
 
@@ -19,6 +19,7 @@ export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const setUser = useAuthStore((s) => s.setUser);
+  const passwordResetRequired = useAuthStore((s) => s.passwordResetRequired);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -27,6 +28,13 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
 
   const canSubmit = email.length > 0 && password.length > 0;
+
+  // A revoked session lands here; send the user straight to the mandatory reset.
+  useEffect(() => {
+    if (passwordResetRequired) {
+      router.replace({ pathname: '/(auth)/forgot-password', params: { reason: 'reset-required' } });
+    }
+  }, [passwordResetRequired, router]);
 
   const validate = () => {
     const next: Record<string, string> = {};
@@ -48,6 +56,10 @@ export default function LoginScreen() {
         router.replace('/(tabs)/add');
       }
     } catch (error) {
+      if (isPasswordResetRequired(error)) {
+        router.push({ pathname: '/(auth)/forgot-password', params: { reason: 'reset-required', email } });
+        return;
+      }
       toast.error(getErrorMessage(error, 'Invalid email or password'));
     } finally {
       setIsLoading(false);

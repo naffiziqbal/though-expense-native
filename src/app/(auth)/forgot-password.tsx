@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Link, useRouter } from 'expo-router';
+import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Button } from '../../components/ui/Button';
@@ -8,6 +8,7 @@ import { Screen } from '../../components/ui/Screen';
 import { fonts, fontSize, radius, spacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { api, getErrorMessage } from '../../lib/api';
+import { useAuthStore } from '../../store/authStore';
 import { toast } from '../../store/toastStore';
 
 type Step = 'email' | 'otp' | 'password';
@@ -15,9 +16,11 @@ type Step = 'email' | 'otp' | 'password';
 export default function ForgotPasswordScreen() {
   const { colors } = useTheme();
   const router = useRouter();
+  const params = useLocalSearchParams<{ reason?: string; email?: string }>();
+  const resetRequired = params.reason === 'reset-required';
 
   const [step, setStep] = useState<Step>('email');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(params.email ?? '');
   const [otp, setOtp] = useState('');
   const [resetToken, setResetToken] = useState('');
   const [password, setPassword] = useState('');
@@ -78,6 +81,7 @@ export default function ForgotPasswordScreen() {
     try {
       const response = await api.resetPassword(resetToken, password);
       if (response.success) {
+        useAuthStore.getState().setPasswordResetRequired(false);
         toast.success('Password reset! Sign in with your new password.');
         router.replace('/(auth)/login');
       }
@@ -90,7 +94,7 @@ export default function ForgotPasswordScreen() {
 
   const headers: Record<Step, { title: string; subtitle: string; icon: keyof typeof Ionicons.glyphMap }> = {
     email: {
-      title: 'Forgot password?',
+      title: resetRequired ? 'Reset your password now' : 'Forgot password?',
       subtitle: 'Enter your email and we will send you a 6-digit code',
       icon: 'trending-up',
     },
@@ -116,6 +120,20 @@ export default function ForgotPasswordScreen() {
         <Text style={[styles.title, { color: colors.textPrimary }]}>{header.title}</Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary, textAlign: 'center' }]}>{header.subtitle}</Text>
       </View>
+
+      {resetRequired && step === 'email' ? (
+        <View
+          accessibilityRole="alert"
+          style={[styles.notice, { backgroundColor: colors.warningSoft, borderColor: colors.warning }]}
+        >
+          <Text style={{ color: colors.textPrimary, fontSize: fontSize.sm, fontFamily: fonts.semibold }}>
+            Password reset required
+          </Text>
+          <Text style={{ color: colors.textSecondary, fontSize: fontSize.xs }}>
+            For your security, we have signed you out and you must set a new password before you can sign in again.
+          </Text>
+        </View>
+      ) : null}
 
       {step === 'email' ? (
         <View style={{ gap: spacing.s3 }}>
@@ -217,6 +235,12 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: fontSize.sm,
     maxWidth: 320,
+  },
+  notice: {
+    borderWidth: 1,
+    borderRadius: radius.md,
+    padding: spacing.s3,
+    gap: spacing.s1,
   },
   backRow: {
     flexDirection: 'row',
